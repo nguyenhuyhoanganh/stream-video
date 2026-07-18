@@ -1,0 +1,12 @@
+meetly:
+  auth:
+    jwt-secret: meetly_dev_jwt_secret_min_32_chars_0123
+    access-ttl: 15m
+    refresh-ttl: 14d
+    cookie-secure: false
+  livekit:
+    api-key: devkey
+    api-secret: meetly_dev_secret_0123456789abcdef
+    ws-url: ws://localhost:7880
+  cors:
+    allowed-origins: http://localhost:5173
