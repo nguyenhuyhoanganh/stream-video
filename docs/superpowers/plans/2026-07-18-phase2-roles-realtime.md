@@ -916,6 +916,7 @@ class GuestJoinIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("ATTENDEE"))
                 .andExpect(jsonPath("$.chatToken").isNotEmpty())
+                .andExpect(jsonPath("$.meetingId").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
         // identity trong livekit token là guest:*
         io.jsonwebtoken.Claims claims = io.jsonwebtoken.Jwts.parser()
@@ -1015,14 +1016,15 @@ Thêm vào `MeetingDtos`:
     public record JoinRequest(String displayName) {}
 ```
 
-và thay `JoinResponse`:
+và thay `JoinResponse` (thêm luôn `meetingId` — FE Task 10–12 cần để gọi chat/controls API):
 
 ```java
-    public record JoinResponse(String livekitUrl, String livekitToken, String role,
-                               String chatToken) {}
+    public record JoinResponse(UUID meetingId, String livekitUrl, String livekitToken,
+                               String role, String chatToken) {}
 ```
 
-(Cập nhật chỗ tạo `JoinResponse` trong `join(...)` của Task 4: thêm đối số `null`.)
+(Cập nhật chỗ tạo `JoinResponse` trong `join(...)` của Task 4 thành:
+`new MeetingDtos.JoinResponse(m.getId(), liveKitTokenService.wsUrl(), token, role.name(), null)`.)
 
 Thêm vào `MeetingService`:
 
@@ -1044,7 +1046,7 @@ Thêm vào `MeetingService`:
         String lkToken = liveKitTokenService.createToken(
                 m.getCode(), identity, displayName, MeetingRole.ATTENDEE, expiresAt);
         String chatToken = jwtService.generateGuestToken(m.getId(), identity, displayName, expiresAt);
-        return new MeetingDtos.JoinResponse(liveKitTokenService.wsUrl(), lkToken,
+        return new MeetingDtos.JoinResponse(m.getId(), liveKitTokenService.wsUrl(), lkToken,
                 MeetingRole.ATTENDEE.name(), chatToken);
     }
 ```
@@ -1082,6 +1084,7 @@ git commit -m "feat(be): guest join for webinars with scoped guest jwt"
 **Files:**
 - Create: `backend/src/main/java/com/meetly/livekit/WebhookController.java`, `WebhookHandler.java`
 - Modify: `backend/src/main/java/com/meetly/common/SecurityConfig.java` (permitAll webhook)
+- Modify: `ops/compose/livekit.yaml` (LiveKit dev phải biết URL webhook — thiếu là dev không bao giờ nhận event)
 - Test: `backend/src/test/java/com/meetly/livekit/WebhookHandlerIT.java`
 
 **Interfaces:**
@@ -1304,13 +1307,28 @@ Thêm vào `SecurityConfig` permitAll matchers:
                 .requestMatchers("/api/v1/livekit/webhook").permitAll()
 ```
 
-- [ ] **Step 3: Chạy → pass, commit**
+- [ ] **Step 3: Cấu hình LiveKit dev gửi webhook về BE** — thêm vào cuối `ops/compose/livekit.yaml`:
+
+```yaml
+webhook:
+  api_key: devkey
+  urls:
+    - http://host.docker.internal:8080/api/v1/livekit/webhook
+```
+
+(`host.docker.internal` trỏ về máy host trên Docker Desktop macOS/Windows; nếu chạy Linux, thêm `extra_hosts: ["host.docker.internal:host-gateway"]` vào service `livekit` trong compose.)
+
+Restart LiveKit: `docker compose -f ops/compose/docker-compose.dev.yml up -d --force-recreate livekit`
+
+Verify thủ công: tạo meeting → join phòng qua UI → kiểm tra DB (`meetings.status` chuyển `LIVE`, có row `participant_sessions`); rời phòng hết → status `ENDED` sau ~20s (LiveKit chờ phòng trống rồi đóng).
+
+- [ ] **Step 4: Chạy → pass, commit**
 
 Run: `cd backend && ./mvnw -q test`
 Expected: PASS.
 
 ```bash
-git add backend/src
+git add backend/src ops/compose/livekit.yaml
 git commit -m "feat(be): livekit webhook receiver with idempotent handlers"
 ```
 
@@ -1593,10 +1611,10 @@ public class ControlController {
             UUID targetUserId = UUID.fromString(identity);
             MeetingMember mm = members.findByMeetingIdAndUserId(meetingId, targetUserId)
                     .orElseGet(() -> {
+                        // CHECK constraint là (user_id OR invited_email) — có userId là đủ
                         MeetingMember fresh = new MeetingMember();
                         fresh.setMeetingId(meetingId);
                         fresh.setUserId(targetUserId);
-                        fresh.setInvitedEmail("(promoted-in-room)");
                         fresh.setInvitedBy(user.id());
                         return fresh;
                     });
@@ -2364,14 +2382,14 @@ describe('roomStore', () => {
 
   it('lưu join info', () => {
     useRoomStore.getState().setJoin({
-      livekitUrl: 'ws://x', livekitToken: 't', role: 'ATTENDEE', chatToken: 'ct',
+      meetingId: 'm1', livekitUrl: 'ws://x', livekitToken: 't', role: 'ATTENDEE', chatToken: 'ct',
     });
     expect(useRoomStore.getState().join?.role).toBe('ATTENDEE');
   });
 
   it('clear reset', () => {
     useRoomStore.getState().setJoin({
-      livekitUrl: 'ws://x', livekitToken: 't', role: 'HOST', chatToken: null,
+      meetingId: 'm1', livekitUrl: 'ws://x', livekitToken: 't', role: 'HOST', chatToken: null,
     });
     useRoomStore.getState().clear();
     expect(useRoomStore.getState().join).toBeNull();
@@ -2389,6 +2407,7 @@ Sửa `frontend/src/api/types.ts` — thay `JoinResponse`:
 export type MeetingRole = 'HOST' | 'SPEAKER' | 'ATTENDEE';
 
 export type JoinResponse = {
+  meetingId: string;
   livekitUrl: string;
   livekitToken: string;
   role: MeetingRole;
@@ -2650,11 +2669,11 @@ export function ControlBar({ role, onRaiseHand, onEnd }: Props) {
   return (
     <div className="flex items-center justify-center gap-3 bg-gray-800 px-4 py-3">
       {canPublish && (
-        <>
+        <span data-testid="publish-controls" className="flex items-center gap-3">
           <TrackToggle source={Track.Source.Microphone} className="lk-button" />
           <TrackToggle source={Track.Source.Camera} className="lk-button" />
           <TrackToggle source={Track.Source.ScreenShare} className="lk-button" />
-        </>
+        </span>
       )}
       <button onClick={onRaiseHand}
               className="bg-yellow-500 text-black rounded-lg px-3 py-2 text-sm font-medium">
@@ -2805,7 +2824,7 @@ Trong `RoomPage.tsx`, thay `<VideoConference />` bằng:
         <RoomLayout meetingId={join.data.meetingId} role={join.data.role} />
 ```
 
-`meetingId` chưa có trong `JoinResponse` — **sửa BE nhỏ trong task này**: thêm field `meetingId` vào `JoinResponse` (BE `MeetingDtos.JoinResponse(UUID meetingId, String livekitUrl, String livekitToken, String role, String chatToken)`, set trong cả `join` và `joinAsGuest`); FE type `JoinResponse` thêm `meetingId: string`. Cập nhật test `JoinApiIT` assert `$.meetingId` không rỗng.
+(`meetingId` đã có sẵn trong `JoinResponse` từ Task 5 — không cần sửa BE ở đây.)
 
 - [ ] **Step 5: Chạy test + commit**
 
@@ -3083,7 +3102,8 @@ git commit -m "feat(fe): chat panel over stomp with raise hand + moderation"
 - [ ] **Step 1: Sửa `meetingApi.ts`** — `CreateMeetingInput` thêm `roomType?: 'MEETING' | 'WEBINAR'`; thêm:
 
 ```ts
-export type MemberDto = { id: string; email: string; role: 'SPEAKER' | 'ATTENDEE' };
+export type MemberDto = { id: string; email: string | null; role: 'SPEAKER' | 'ATTENDEE' };
+// email null = member được promote ngay trong phòng (chỉ có userId)
 
 export function useMembers(meetingId: string | null) {
   return useQuery({
@@ -3152,7 +3172,7 @@ export function MembersDialog({ meetingId, onClose }: Props) {
         <ul className="divide-y max-h-64 overflow-y-auto">
           {members?.map((m) => (
             <li key={m.id} className="py-2 flex justify-between text-sm">
-              <span>{m.email} — {m.role === 'SPEAKER' ? 'Diễn giả' : 'Khán giả'}</span>
+              <span>{m.email ?? '(thành viên trong phòng)'} — {m.role === 'SPEAKER' ? 'Diễn giả' : 'Khán giả'}</span>
               <button onClick={() => removeMember.mutate(m.id)}
                       className="text-red-600">Xóa</button>
             </li>
@@ -3218,19 +3238,20 @@ test('webinar: guest là khán giả, host promote, chat hoạt động', async 
   await guest.locator('input#username, input[name="username"]').fill('Khách Duy');
   await guest.getByRole('button', { name: 'Vào phòng' }).click();
 
-  // Guest là ATTENDEE: không thấy toggle camera
+  // Guest là ATTENDEE: không có cụm nút publish (mic/cam/share)
   await expect(guest.getByText('Giơ tay')).toBeVisible({ timeout: 20_000 });
-  await expect(guest.locator('button.lk-button', { hasText: /camera/i })).toHaveCount(0);
+  await expect(guest.getByTestId('publish-controls')).toHaveCount(0);
 
   // Chat 2 chiều
   await guest.getByPlaceholder('Nhắn tin...').fill('Xin chào từ khách');
   await guest.getByPlaceholder('Nhắn tin...').press('Enter');
   await expect(host.getByText('Xin chào từ khách')).toBeVisible({ timeout: 10_000 });
 
-  // Host promote guest → guest thấy toast quyền phát biểu
+  // Host promote guest → guest thấy toast + cụm nút publish xuất hiện runtime
   await host.getByTitle('Cho phát biểu').first().click();
   await expect(guest.getByText('Bạn đã được cấp quyền phát biểu 🎤'))
       .toBeVisible({ timeout: 10_000 });
+  await expect(guest.getByTestId('publish-controls')).toHaveCount(1, { timeout: 10_000 });
 
   await host.context().close();
   await guest.context().close();

@@ -19,6 +19,13 @@
 - Mã phòng dạng `abc-defg-hij` (chữ thường, 3-4-3, SecureRandom).
 - Commit message: conventional commits (`feat:`, `test:`, `chore:`, `docs:`).
 
+## Chuẩn bị máy dev (macOS, làm một lần trước Task 1)
+
+- **Docker Desktop** phải đang chạy (compose + Testcontainers cần): mở app Docker, chờ icon cá voi ổn định.
+- **JDK 21**: `brew install openjdk@21`; khi build BE: `export JAVA_HOME=$(brew --prefix openjdk@21)` (máy có Java version khác vẫn ổn — Maven theo JAVA_HOME).
+- **Maven**: `brew install maven` (chỉ cần cho lệnh sinh wrapper ở Task 2; từ đó về sau dùng `./mvnw`).
+- **Node ≥ 20** (kiểm tra `node -v`).
+
 ---
 
 ### Task 1: Monorepo scaffold + Docker Compose dev

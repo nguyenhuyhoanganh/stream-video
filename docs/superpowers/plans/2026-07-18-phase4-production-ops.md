@@ -211,6 +211,8 @@ api:
     MEETLY_LIVEKIT_WS_URL: wss://livekit.meetly.example.com
     MEETLY_LIVEKIT_HTTP_URL: https://livekit.meetly.example.com
     MEETLY_STORAGE_ENDPOINT: https://s3.ap-southeast-1.amazonaws.com
+    # prod: upload endpoint = endpoint (chỉ dev/MinIO mới khác nhau)
+    MEETLY_STORAGE_UPLOAD_ENDPOINT: https://s3.ap-southeast-1.amazonaws.com
     MEETLY_STORAGE_REGION: ap-southeast-1
     MEETLY_STORAGE_BUCKET: meetly-recordings
     MEETLY_AUTH_COOKIE_SECURE: "true"
@@ -417,6 +419,7 @@ api:
     MEETLY_LIVEKIT_WS_URL: wss://livekit-staging.meetly.example.com
     MEETLY_LIVEKIT_HTTP_URL: https://livekit-staging.meetly.example.com
     MEETLY_STORAGE_ENDPOINT: https://s3.ap-southeast-1.amazonaws.com
+    MEETLY_STORAGE_UPLOAD_ENDPOINT: https://s3.ap-southeast-1.amazonaws.com
     MEETLY_STORAGE_REGION: ap-southeast-1
     MEETLY_STORAGE_BUCKET: meetly-recordings-staging
     MEETLY_AUTH_COOKIE_SECURE: "true"
@@ -498,11 +501,11 @@ jobs:
       - name: Install
         working-directory: frontend
         run: npm ci
-      - name: Lint + typecheck + test + build
+      - name: Lint + test + build
         working-directory: frontend
+        # build của Vite scaffold = `tsc -b && vite build` → typecheck đã nằm trong build
         run: |
-          npx eslint src
-          npx tsc --noEmit
+          npm run lint
           npm test
           npm run build
 ```
@@ -906,6 +909,8 @@ spec:
 4. LiveKit metrics: chart livekit đã bật prometheus port — thêm ServiceMonitor tương tự
    nếu chart không tự tạo (đối chiếu `helm show values livekit/livekit-server`).
 5. Logs: cài loki-stack (`grafana/loki-stack`) khi cần — logback đã xuất JSON (xem Task 8).
+6. Tên metric LiveKit (`livekit_participant_total`, `livekit_room_total`) có thể khác theo
+   version — curl endpoint `/metrics` của livekit lấy tên thật rồi chỉnh alert + dashboard.
 ```
 
 - [ ] **Step 5: Lint + commit**

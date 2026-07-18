@@ -208,12 +208,12 @@ Ops:        GET /actuator/health|prometheus
 
 ```
 /login /register           Auth
-/                          Dashboard: meeting sắp tới, "Họp ngay", "Đặt lịch"
-/meetings/new /:id/edit    Form đặt lịch + mời thành viên + gán vai trò
+/                          Dashboard: meeting sắp tới, "Họp ngay", form đặt lịch
+                           inline + dialog mời thành viên (trang riêng: sau MVP)
 /m/:code                   Pre-join lobby: xin quyền thiết bị, preview cam,
                            chọn mic/cam, guest nhập tên → POST /join → room
 /m/:code/room              Phòng họp
-/recordings                Danh sách bản ghi + player (presigned URL)
+/recordings/:meetingId     Bản ghi của một meeting + player (presigned URL)
 ```
 
 ### 5.3 Cấu trúc thư mục

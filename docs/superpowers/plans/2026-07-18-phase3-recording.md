@@ -236,7 +236,7 @@ git commit -m "feat(be): V3 recordings table + entity"
 - Test: `backend/src/test/java/com/meetly/recording/StorageServiceTest.java`
 
 **Interfaces:**
-- Produces: `StorageService.presignGetUrl(String key, Duration ttl): String`; `StorageProperties(String endpoint, String region, String bucket, String accessKey, String secretKey)` prefix `meetly.storage`. Task 4 dùng `props` cho S3Upload của Egress; Task 5–6 dùng presign.
+- Produces: `StorageService.presignGetUrl(String key, Duration ttl): String`; `StorageProperties(String endpoint, String uploadEndpoint, String region, String bucket, String accessKey, String secretKey)` prefix `meetly.storage`. **2 endpoint là bắt buộc ở dev**: `endpoint` = góc nhìn browser/BE trên máy host (`http://localhost:9000` — dùng presign), `uploadEndpoint` = góc nhìn CONTAINER egress trong docker network (`http://minio:9000` — vì egress mới là bên upload; `localhost` từ trong container là chính nó). Production cả 2 cùng là endpoint S3 thật. Task 4 dùng `uploadEndpoint` cho S3Upload của Egress; Task 5–6 dùng presign.
 
 - [ ] **Step 1: Thêm dependency `pom.xml`**
 
@@ -248,7 +248,8 @@ git commit -m "feat(be): V3 recordings table + entity"
 
 ```yaml
   storage:
-    endpoint: http://localhost:9000
+    endpoint: http://localhost:9000        # presign — browser trên máy host truy cập
+    upload-endpoint: http://minio:9000     # egress CONTAINER upload tới đây (docker network)
     region: us-east-1
     bucket: meetly-recordings
     access-key: minio
@@ -270,7 +271,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class StorageServiceTest {
     private final StorageService service = new StorageService(new StorageProperties(
-            "http://localhost:9000", "us-east-1", "meetly-recordings", "minio", "minio12345"));
+            "http://localhost:9000", "http://minio:9000",
+            "us-east-1", "meetly-recordings", "minio", "minio12345"));
 
     @Test
     void presignedUrlContainsBucketKeyAndSignature() {
@@ -295,8 +297,8 @@ package com.meetly.recording;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "meetly.storage")
-public record StorageProperties(String endpoint, String region, String bucket,
-                                String accessKey, String secretKey) {}
+public record StorageProperties(String endpoint, String uploadEndpoint, String region,
+                                String bucket, String accessKey, String secretKey) {}
 ```
 
 `com/meetly/recording/StorageService.java`:
@@ -531,7 +533,8 @@ public class EgressClient {
                 .setFileType(LivekitEgress.EncodedFileType.MP4)
                 .setFilepath(s3Key)
                 .setS3(LivekitEgress.S3Upload.newBuilder()
-                        .setEndpoint(storage.endpoint())
+                        // endpoint theo GÓC NHÌN CONTAINER EGRESS, không phải BE
+                        .setEndpoint(storage.uploadEndpoint())
                         .setAccessKey(storage.accessKey())
                         .setSecret(storage.secretKey())
                         .setRegion(storage.region())
