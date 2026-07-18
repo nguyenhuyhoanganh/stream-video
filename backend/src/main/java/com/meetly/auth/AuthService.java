@@ -74,4 +74,20 @@ public class AuthService {
             throw new IllegalStateException(e);
         }
     }
+
+    @Transactional
+    public User rotate(String rawRefreshToken) {
+        RefreshToken current = refreshTokens.findByTokenHash(sha256(rawRefreshToken))
+                .filter(RefreshToken::isActive)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
+                        ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token không hợp lệ"));
+        current.setRevokedAt(Instant.now());
+        return users.findById(current.getUserId()).orElseThrow();
+    }
+
+    @Transactional
+    public void revoke(String rawRefreshToken) {
+        refreshTokens.findByTokenHash(sha256(rawRefreshToken))
+                .ifPresent(rt -> rt.setRevokedAt(Instant.now()));
+    }
 }

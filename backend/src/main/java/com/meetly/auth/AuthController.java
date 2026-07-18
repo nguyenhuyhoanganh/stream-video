@@ -31,6 +31,27 @@ public class AuthController {
         return respondWithTokens(user);
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(
+            @CookieValue(name = REFRESH_COOKIE, required = false) String refreshCookie) {
+        if (refreshCookie == null) {
+            throw new com.meetly.common.ApiException(org.springframework.http.HttpStatus.UNAUTHORIZED,
+                    com.meetly.common.ErrorCode.INVALID_REFRESH_TOKEN, "Thiếu refresh token");
+        }
+        User user = authService.rotate(refreshCookie);
+        return respondWithTokens(user);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = REFRESH_COOKIE, required = false) String refreshCookie) {
+        if (refreshCookie != null) authService.revoke(refreshCookie);
+        ResponseCookie cleared = ResponseCookie.from(REFRESH_COOKIE, "")
+                .httpOnly(true).secure(props.cookieSecure())
+                .path("/api/v1/auth").maxAge(0).sameSite("Lax").build();
+        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cleared.toString()).build();
+    }
+
     ResponseEntity<AuthResponse> respondWithTokens(User user) {
         AuthService.TokenPair pair = authService.issueTokens(user);
         ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE, pair.rawRefreshToken())
