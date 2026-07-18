@@ -1,0 +1,13 @@
+package com.meetly.common;
+
+public enum ErrorCode {
+    VALIDATION_FAILED,
+    EMAIL_TAKEN,
+    INVALID_CREDENTIALS,
+    INVALID_REFRESH_TOKEN,
+    MEETING_NOT_FOUND,
+    MEETING_ENDED,
+    MEETING_NOT_STARTED,
+    NOT_MEETING_HOST,
+    INTERNAL_ERROR
+}
