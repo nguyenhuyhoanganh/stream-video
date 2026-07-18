@@ -1258,6 +1258,8 @@ public class WebhookHandler {
 }
 ```
 
+*Ghi chú thiết kế: SETNX đánh dấu TRƯỚC khi xử lý → nếu transaction sau đó fail thì event bị bỏ qua vĩnh viễn (at-most-once). Chấp nhận cho MVP vì các event sau tự đưa hệ về đúng trạng thái (`room_finished` đóng mọi session còn mở, status là dữ liệu hội tụ). Nếu sau này cần at-least-once: đổi thành check-tồn-tại trước, ghi dấu SAU khi transaction commit (`TransactionSynchronization.afterCommit`).*
+
 `com/meetly/livekit/WebhookController.java`:
 
 ```java
@@ -1632,13 +1634,14 @@ git commit -m "feat(be): host controls mute/promote/demote/kick/end via roomserv
 ### Task 8: Chat STOMP — send/persist/relay qua Redis
 
 **Files:**
-- Create: `backend/src/main/java/com/meetly/chat/WebSocketConfig.java`, `StompAuthChannelInterceptor.java`, `ChatController.java`, `ChatService.java`, `ChatDtos.java`, `RedisChatRelay.java`
+- Create: `backend/src/main/java/com/meetly/chat/WebSocketConfig.java`, `StompAuthChannelInterceptor.java`, `ChatAccessGuard.java`, `ChatController.java`, `ChatService.java`, `ChatDtos.java`, `RedisChatRelay.java`
 - Modify: `backend/src/main/java/com/meetly/common/SecurityConfig.java` (permitAll `/ws/**`)
 - Test: `backend/src/test/java/com/meetly/chat/ChatStompIT.java`
 
 **Interfaces:**
 - Produces: WS endpoint `/ws` (auth = header STOMP CONNECT `Authorization: Bearer <access|guest token>`); SEND `/app/meetings/{meetingId}/chat` body `SendChatRequest(String content, ChatMessageType type)` (type chỉ TEXT/RAISE_HAND); SUBSCRIBE `/topic/meetings/{meetingId}/chat` nhận `ChatEvent(String kind, ChatMessageDto message, UUID messageId)` — kind `MESSAGE` | `MESSAGE_DELETED`. `ChatMessageDto(UUID id, UUID meetingId, String senderIdentity, String senderDisplayName, String content, String type, Instant createdAt)`.
-- Luồng: handler → `ChatService.saveAndPublish` (validate quyền: user phải resolve được role hoặc WEBINAR; guest phải đúng meetingId) → lưu Postgres → `StringRedisTemplate.convertAndSend("chat:"+meetingId, json(ChatEvent))` → `RedisChatRelay` (MessageListener pattern `chat:*`) → `SimpMessagingTemplate.convertAndSend("/topic/meetings/{id}/chat", event)`. Nhờ đó nhiều pod cùng nhận (spec D4).
+- **`ChatAccessGuard.check(Object principal, UUID meetingId): Meeting`** — nguồn sự thật duy nhất cho quyền chat, dùng ở CẢ 3 chỗ: interceptor khi SUBSCRIBE (chặn nghe lén topic phòng khác), `ChatService.saveAndPublish` khi gửi, `ChatRestController` khi đọc history (Task 9). Luật: guest chỉ đúng phòng trong token; user phải là host/member hoặc phòng WEBINAR; sai → 403 `NOT_A_MEMBER`.
+- Luồng: handler → `ChatService.saveAndPublish` (guard check) → lưu Postgres → `StringRedisTemplate.convertAndSend("chat:"+meetingId, json(ChatEvent))` → `RedisChatRelay` (MessageListener pattern `chat:*`) → `SimpMessagingTemplate.convertAndSend("/topic/meetings/{id}/chat", event)`. Nhờ đó nhiều pod cùng nhận (spec D4).
 
 - [ ] **Step 1: Viết test fail** (STOMP client thật, full stack)
 
@@ -1806,12 +1809,69 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 }
 ```
 
-`com/meetly/chat/StompAuthChannelInterceptor.java`:
+`com/meetly/chat/ChatAccessGuard.java` (nguồn sự thật duy nhất cho quyền chat — vá lỗ hổng nghe lén/đọc trộm phòng khác):
 
 ```java
 package com.meetly.chat;
 
 import com.meetly.auth.AuthenticatedUser;
+import com.meetly.auth.GuestUser;
+import com.meetly.common.ApiException;
+import com.meetly.common.ErrorCode;
+import com.meetly.meeting.Meeting;
+import com.meetly.meeting.MeetingRepository;
+import com.meetly.meeting.MemberService;
+import com.meetly.meeting.RoomType;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Component
+@RequiredArgsConstructor
+public class ChatAccessGuard {
+    private final MeetingRepository meetings;
+    private final MemberService memberService;
+
+    /**
+     * Quyền chat của một principal với một meeting — dùng cho SUBSCRIBE, gửi tin, đọc history.
+     * Guest: chỉ phòng trong token. User: host/member, hoặc phòng WEBINAR (mở).
+     * @throws ApiException 404 nếu meeting không tồn tại; 403 nếu không có quyền.
+     */
+    @Transactional
+    public Meeting check(Object principal, UUID meetingId) {
+        Meeting meeting = meetings.findById(meetingId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
+                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+        if (principal instanceof GuestUser g) {
+            if (!g.meetingId().equals(meetingId)) {
+                throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
+                        "Guest token không thuộc phòng này");
+            }
+            return meeting;
+        }
+        if (principal instanceof AuthenticatedUser u) {
+            boolean allowed = meeting.getRoomType() == RoomType.WEBINAR
+                    || memberService.resolveRole(meeting, u.id(), u.email()).isPresent();
+            if (!allowed) {
+                throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
+                        "Bạn không thuộc phòng họp này");
+            }
+            return meeting;
+        }
+        throw new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS,
+                "Không xác thực được");
+    }
+}
+```
+
+`com/meetly/chat/StompAuthChannelInterceptor.java` — xác thực ở CONNECT **và kiểm tra quyền ở SUBSCRIBE** (không có check này, guest phòng A subscribe được topic phòng B):
+
+```java
+package com.meetly.chat;
+
 import com.meetly.auth.GuestUser;
 import com.meetly.auth.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -1826,17 +1886,26 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
+    private static final Pattern CHAT_TOPIC =
+            Pattern.compile("^/topic/meetings/([0-9a-fA-F-]{36})/chat$");
+
     private final JwtService jwtService;
+    private final ChatAccessGuard accessGuard;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor =
                 MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-        if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+        if (accessor == null) return message;
+
+        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String header = accessor.getFirstNativeHeader("Authorization");
             if (header == null || !header.startsWith("Bearer ")) {
                 throw new IllegalArgumentException("Thiếu Authorization header khi CONNECT");
@@ -1845,6 +1914,17 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             String role = principal instanceof GuestUser ? "ROLE_GUEST" : "ROLE_USER";
             accessor.setUser(new UsernamePasswordAuthenticationToken(
                     principal, null, List.of(new SimpleGrantedAuthority(role))));
+        }
+
+        if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            String destination = accessor.getDestination();
+            Matcher m = destination != null ? CHAT_TOPIC.matcher(destination) : null;
+            if (m == null || !m.matches()) {
+                throw new IllegalArgumentException("Destination không hợp lệ: " + destination);
+            }
+            var auth = (UsernamePasswordAuthenticationToken) accessor.getUser();
+            if (auth == null) throw new IllegalArgumentException("Chưa xác thực khi SUBSCRIBE");
+            accessGuard.check(auth.getPrincipal(), UUID.fromString(m.group(1)));
         }
         return message;
     }
@@ -1866,9 +1946,6 @@ import com.meetly.common.ApiException;
 import com.meetly.common.ErrorCode;
 import com.meetly.meeting.Meeting;
 import com.meetly.meeting.MeetingRepository;
-import com.meetly.meeting.MemberService;
-import com.meetly.meeting.RoomType;
-import com.meetly.user.User;
 import com.meetly.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -1884,39 +1961,24 @@ import java.util.UUID;
 public class ChatService {
     private final ChatMessageRepository chatMessages;
     private final MeetingRepository meetings;
-    private final MemberService memberService;
     private final UserRepository users;
+    private final ChatAccessGuard accessGuard;
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public void saveAndPublish(UUID meetingId, Object principal, String content,
                                ChatMessageType type) {
-        Meeting meeting = meetings.findById(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+        accessGuard.check(principal, meetingId);   // 404/403 nếu không thuộc phòng
         String identity;
         String displayName;
         if (principal instanceof GuestUser g) {
-            if (!g.meetingId().equals(meetingId)) {
-                throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
-                        "Guest token không thuộc phòng này");
-            }
             identity = g.identity();
             displayName = g.displayName();
-        } else if (principal instanceof AuthenticatedUser u) {
-            User dbUser = users.findById(u.id()).orElseThrow();
-            boolean allowed = memberService.resolveRole(meeting, u.id(), u.email()).isPresent()
-                    || meeting.getRoomType() == RoomType.WEBINAR;
-            if (!allowed) {
-                throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
-                        "Bạn không thuộc phòng họp này");
-            }
-            identity = u.id().toString();
-            displayName = dbUser.getFullName();
         } else {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS,
-                    "Không xác thực được người gửi");
+            AuthenticatedUser u = (AuthenticatedUser) principal;
+            identity = u.id().toString();
+            displayName = users.findById(u.id()).orElseThrow().getFullName();
         }
 
         ChatMessage msg = new ChatMessage();
@@ -2155,11 +2217,42 @@ class ChatRestIT {
                         .header("Authorization", "Bearer " + guestJwt))
                 .andExpect(status().isOk());
 
-        // guest token phòng khác → 403
+        // guest token thuộc phòng KHÁC (meetingId ngẫu nhiên) gọi vào phòng này → 403
         String otherGuest = jwtService.generateGuestToken(UUID.randomUUID(),
                 "guest:zzz", "Khách", java.time.Instant.now().plusSeconds(3600));
         mvc.perform(get("/api/v1/meetings/" + meetingId + "/messages")
                         .header("Authorization", "Bearer " + otherGuest))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void strangerCannotReadPrivateMeetingHistory() throws Exception {
+        // phòng KÍN (MEETING) — user đăng nhập nhưng không phải member → 403
+        String created = mvc.perform(post("/api/v1/meetings")
+                        .header("Authorization", "Bearer " + hostToken)
+                        .contentType(APPLICATION_JSON).content("""
+                                {"title":"Private","roomType":"MEETING"}"""))
+                .andReturn().getResponse().getContentAsString();
+        String privateId = read(created, "$.id");
+
+        String otherReg = mvc.perform(post("/api/v1/auth/register").contentType(APPLICATION_JSON)
+                        .content("""
+                                {"email":"cs+%d@meetly.dev","password":"secret123","fullName":"S"}"""
+                                .formatted(System.nanoTime())))
+                .andReturn().getResponse().getContentAsString();
+        String strangerToken = read(otherReg, "$.accessToken");
+
+        mvc.perform(get("/api/v1/meetings/" + privateId + "/messages")
+                        .header("Authorization", "Bearer " + strangerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("NOT_A_MEMBER"));
+
+        // guest token của phòng KHÁC gọi vào phòng này → 403
+        String foreignGuest = jwtService.generateGuestToken(
+                UUID.fromString(meetingId), "guest:zzz", "Khách",
+                java.time.Instant.now().plusSeconds(3600));
+        mvc.perform(get("/api/v1/meetings/" + privateId + "/messages")
+                        .header("Authorization", "Bearer " + foreignGuest))
                 .andExpect(status().isForbidden());
     }
 }
@@ -2175,7 +2268,6 @@ Run: `cd backend && ./mvnw -q test -Dtest=ChatRestIT` → FAIL.
 package com.meetly.chat;
 
 import com.meetly.auth.AuthenticatedUser;
-import com.meetly.auth.GuestUser;
 import com.meetly.chat.ChatDtos.ChatMessageDto;
 import com.meetly.common.ApiException;
 import com.meetly.common.ErrorCode;
@@ -2198,6 +2290,7 @@ import java.util.UUID;
 public class ChatRestController {
     private final ChatMessageRepository chatMessages;
     private final ChatService chatService;
+    private final ChatAccessGuard accessGuard;
 
     @GetMapping
     public List<ChatMessageDto> history(
@@ -2206,7 +2299,7 @@ public class ChatRestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant before,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant after,
             @RequestParam(defaultValue = "50") int limit) {
-        requireMeetingAccess(principal, meetingId);
+        accessGuard.check(principal, meetingId);   // cùng luật với SUBSCRIBE/gửi tin
         List<ChatMessage> page;
         if (after != null) {
             page = chatMessages.findByMeetingIdAndCreatedAtAfterOrderByCreatedAtAsc(meetingId, after);
@@ -2231,15 +2324,6 @@ public class ChatRestController {
         }
         chatService.deleteMessage(meetingId, msgId, user.id());
         return ResponseEntity.noContent().build();
-    }
-
-    private void requireMeetingAccess(Object principal, UUID meetingId) {
-        if (principal instanceof GuestUser g && !g.meetingId().equals(meetingId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
-                    "Guest token không thuộc phòng này");
-        }
-        // user đăng nhập: cho đọc history nếu vào được trang room (đã qua join);
-        // kiểm tra chặt hơn (membership) đã nằm ở luồng gửi tin.
     }
 }
 ```

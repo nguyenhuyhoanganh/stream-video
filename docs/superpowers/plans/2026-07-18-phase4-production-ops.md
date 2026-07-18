@@ -573,6 +573,13 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true
+      - name: Trivy scan web image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/meetly-web:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
 
   deploy-staging:
     needs: build-push
@@ -1069,8 +1076,8 @@ spec:
     metadata:
       labels: { app: coturn }
     spec:
+      # KHÔNG hostNetwork: public traffic đi qua Service LoadBalancer bên dưới
       nodeSelector: { role: livekit }
-      hostNetwork: true
       containers:
         - name: coturn
           image: coturn/coturn:4.6-alpine

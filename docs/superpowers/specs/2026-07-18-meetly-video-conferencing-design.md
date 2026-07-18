@@ -105,7 +105,7 @@ com.meetly/
 
 | Bảng | Cột chính | Ghi chú |
 |---|---|---|
-| `users` | id uuid, email unique, password_hash (BCrypt), full_name, avatar_url, role, created_at | role app: `USER`/`ADMIN` |
+| `users` | id uuid, email unique, password_hash (BCrypt), full_name, role, created_at | role app: `USER`/`ADMIN` |
 | `meetings` | id uuid, **code** unique (dạng `abc-defg-hij`), title, description, host_id → users, scheduled_start_at, scheduled_end_at, status, room_type, allow_recording, created_at | status: `SCHEDULED→LIVE→ENDED` / `CANCELLED`; room_type: `MEETING`/`WEBINAR` |
 | `meeting_members` | id, meeting_id →, user_id → nullable, invited_email nullable, **role**, invited_by, created_at | role phòng: `HOST`/`SPEAKER`/`ATTENDEE`. Unique (meeting_id, user_id) |
 | `participant_sessions` | id, meeting_id →, identity, display_name, joined_at, left_at | Điểm danh, ghi từ webhook `participant_joined/left` |
@@ -142,8 +142,8 @@ FE ── POST /api/v1/meetings/{code}/join ──► BE:
 
 ### 4.4 Chat — STOMP over WebSocket
 
-- Endpoint `/ws`; xác thực JWT (access token hoặc guest chatToken) tại bước CONNECT qua ChannelInterceptor.
-- Client SEND `/app/meetings/{id}/chat` → server validate (đúng phòng, chưa bị cấm chat) → lưu Postgres → publish Redis channel `chat:{meetingId}` → mọi pod API rebroadcast `/topic/meetings/{id}/chat` cho subscriber của mình.
+- Endpoint `/ws`; xác thực JWT (access token hoặc guest chatToken) tại bước CONNECT qua ChannelInterceptor. **Bước SUBSCRIBE cũng phải kiểm tra quyền**: guest chỉ subscribe được topic phòng trong token; user phải là host/member hoặc phòng là WEBINAR — chặn nghe lén chat phòng khác.
+- Client SEND `/app/meetings/{id}/chat` → server validate quyền (cùng luật với SUBSCRIBE, tập trung một chỗ) → lưu Postgres → publish Redis channel `chat:{meetingId}` → mọi pod API rebroadcast `/topic/meetings/{id}/chat` cho subscriber của mình.
 - Giơ tay = message type `RAISE_HAND`; hạ tay/host acknowledge = `SYSTEM`.
 - Moderation: host `DELETE /messages/{id}` → soft-delete + broadcast event xóa để FE gỡ tin.
 - Lịch sử: `GET /api/v1/meetings/{id}/messages?before={cursor}&limit=50`; khi STOMP reconnect, FE fetch `after={lastMessageId}` để bù tin lỡ.
@@ -169,8 +169,8 @@ Verify chữ ký bằng API secret. Xử lý **idempotent** (LiveKit retry) — 
 
 ```
 Auth:       POST /auth/register | /auth/login | /auth/refresh | /auth/logout
-Users:      GET|PATCH /users/me
-Meetings:   POST /meetings              GET /meetings?filter=upcoming|past
+Users:      GET /users/me               (PATCH hồ sơ: sau MVP)
+Meetings:   POST /meetings              GET /meetings  (filter upcoming|past: sau MVP)
             GET /meetings/{code}        PATCH|DELETE /meetings/{id}
             POST /meetings/{id}/members            DELETE /meetings/{id}/members/{memberId}
             POST /meetings/{code}/join             POST /meetings/{id}/end
@@ -202,7 +202,7 @@ Ops:        GET /actuator/health|prometheus
 | UI state | Zustand (authStore, roomUiStore) |
 | Chat | `@stomp/stompjs` |
 | Styling | Tailwind CSS |
-| API types | Sinh TS types từ OpenAPI spec của BE (openapi-typescript) trong CI |
+| API types | Types TS viết tay đồng bộ với DTO của BE (MVP); sinh tự động từ OpenAPI là cải tiến sau |
 
 ### 5.2 Routes
 
