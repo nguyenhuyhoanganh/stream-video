@@ -8,7 +8,18 @@ export function PreJoinPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const ready = useAuthStore((s) => s.ready);
   const setDisplayName = useRoomStore((s) => s.setDisplayName);
+
+  // PreJoin chỉ đọc defaults lúc mount — phải chờ bootstrapAuth xong
+  // để user đăng nhập mở link trực tiếp vẫn được prefill tên
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+        Đang tải...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center" data-lk-theme="default">

@@ -7,7 +7,37 @@ export type CreateMeetingInput = {
   description?: string;
   scheduledStartAt?: string;
   scheduledEndAt?: string;
+  roomType?: 'MEETING' | 'WEBINAR';
 };
+
+export type MemberDto = { id: string; email: string | null; role: 'SPEAKER' | 'ATTENDEE' };
+// email null = member được promote ngay trong phòng (chỉ có userId)
+
+export function useMembers(meetingId: string | null) {
+  return useQuery({
+    queryKey: ['members', meetingId],
+    enabled: !!meetingId,
+    queryFn: async () => (await api.get<MemberDto[]>(`/meetings/${meetingId}/members`)).data,
+  });
+}
+
+export function useAddMember(meetingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { email: string; role: 'SPEAKER' | 'ATTENDEE' }) =>
+      (await api.post(`/meetings/${meetingId}/members`, input)).data,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['members', meetingId] }),
+  });
+}
+
+export function useRemoveMember(meetingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (memberId: string) =>
+      api.delete(`/meetings/${meetingId}/members/${memberId}`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['members', meetingId] }),
+  });
+}
 
 export function useMyMeetings() {
   return useQuery({

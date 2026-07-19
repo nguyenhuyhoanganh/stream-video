@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useAuth } from '../auth/useAuth';
+import { MembersDialog } from './MembersDialog';
 import { useCreateMeeting, useMyMeetings } from './meetingApi';
 
 export function DashboardPage() {
@@ -13,6 +14,8 @@ export function DashboardPage() {
 
   const [title, setTitle] = useState('');
   const [startAt, setStartAt] = useState('');
+  const [roomType, setRoomType] = useState<'MEETING' | 'WEBINAR'>('MEETING');
+  const [membersFor, setMembersFor] = useState<string | null>(null);
 
   async function meetNow() {
     const m = await createMeeting.mutateAsync({ title: 'Họp nhanh' });
@@ -24,6 +27,7 @@ export function DashboardPage() {
     await createMeeting.mutateAsync({
       title,
       scheduledStartAt: startAt ? new Date(startAt).toISOString() : undefined,
+      roomType,
     });
     setTitle('');
     setStartAt('');
@@ -60,6 +64,14 @@ export function DashboardPage() {
             <input className="mt-1 border rounded-lg px-3 py-2" type="datetime-local"
                    value={startAt} onChange={(e) => setStartAt(e.target.value)} />
           </label>
+          <label className="text-sm">
+            Loại phòng
+            <select className="mt-1 border rounded-lg px-3 py-2" value={roomType}
+                    onChange={(e) => setRoomType(e.target.value as 'MEETING' | 'WEBINAR')}>
+              <option value="MEETING">Họp kín</option>
+              <option value="WEBINAR">Webinar</option>
+            </select>
+          </label>
           <button className="bg-gray-800 text-white rounded-lg px-4 py-2 disabled:opacity-50"
                   disabled={createMeeting.isPending} type="submit">
             Đặt lịch
@@ -80,16 +92,23 @@ export function DashboardPage() {
                   {new Date(m.scheduledStartAt).toLocaleString('vi-VN')} · {m.code} · {m.status}
                 </p>
               </div>
-              {(m.status === 'SCHEDULED' || m.status === 'LIVE') && (
-                <button onClick={() => navigate(`/m/${m.code}`)}
-                        className="text-blue-600 font-medium hover:underline">
-                  Vào phòng
+              <span className="flex items-center gap-3">
+                <button onClick={() => setMembersFor(m.id)}
+                        className="text-gray-600 text-sm hover:underline">
+                  Thành viên
                 </button>
-              )}
+                {(m.status === 'SCHEDULED' || m.status === 'LIVE') && (
+                  <button onClick={() => navigate(`/m/${m.code}`)}
+                          className="text-blue-600 font-medium hover:underline">
+                    Vào phòng
+                  </button>
+                )}
+              </span>
             </div>
           ))}
         </section>
       </main>
+      {membersFor && <MembersDialog meetingId={membersFor} onClose={() => setMembersFor(null)} />}
     </div>
   );
 }
