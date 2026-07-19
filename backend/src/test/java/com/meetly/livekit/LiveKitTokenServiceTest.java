@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LiveKitTokenServiceTest {
     private static final String SECRET = "meetly_dev_secret_0123456789abcdef";
     private final LiveKitTokenService service = new LiveKitTokenService(
-            new LiveKitProperties("devkey", SECRET, "ws://localhost:7880"));
+            new LiveKitProperties("devkey", SECRET, "ws://localhost:7880", "http://localhost:7880"));
 
     @Test
     void speakerCanPublish() {

@@ -8,5 +8,6 @@ meetly:
     api-key: devkey
     api-secret: meetly_dev_secret_0123456789abcdef
     ws-url: ws://localhost:7880
+    http-url: http://localhost:7880
   cors:
     allowed-origins: http://localhost:5173
