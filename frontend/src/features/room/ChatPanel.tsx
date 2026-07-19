@@ -14,13 +14,14 @@ type Props = {
 export function ChatPanel({ meetingId, role, registerRaiseHand }: Props) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const chatToken = useRoomStore((s) => s.join?.chatToken ?? null);
+  // guest dùng chatToken scoped theo phòng; member dùng access token sẵn có
   const token = chatToken ?? accessToken;
   const { messages, connected, send, removeLocal } = useChatSocket(meetingId, token);
   const [draft, setDraft] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    registerRaiseHand?.(() => send('giơ tay', 'RAISE_HAND'));
+    registerRaiseHand?.(() => send('raised hand', 'RAISE_HAND'));
   }, [registerRaiseHand, send]);
 
   useEffect(() => {
@@ -42,13 +43,13 @@ export function ChatPanel({ meetingId, role, registerRaiseHand }: Props) {
   return (
     <div className="h-full flex flex-col">
       <h3 className="px-3 py-2 text-sm font-semibold text-gray-300">
-        Chat {connected ? '' : '(đang kết nối...)'}
+        Chat {connected ? '' : '(connecting...)'}
       </h3>
       <div className="flex-1 overflow-y-auto px-3 space-y-1">
         {messages.map((m) =>
           m.type === 'RAISE_HAND' ? (
             <p key={m.id} className="text-yellow-400 text-sm">
-              ✋ <b>{m.senderDisplayName}</b> giơ tay
+              ✋ <b>{m.senderDisplayName}</b> raised their hand
             </p>
           ) : (
             <p key={m.id} className="text-sm text-gray-100 group">
@@ -56,7 +57,7 @@ export function ChatPanel({ meetingId, role, registerRaiseHand }: Props) {
               {role === 'HOST' && (
                 <button onClick={() => void onDelete(m.id)}
                         className="ml-2 hidden group-hover:inline text-red-400 text-xs">
-                  xóa
+                  delete
                 </button>
               )}
             </p>
@@ -67,9 +68,9 @@ export function ChatPanel({ meetingId, role, registerRaiseHand }: Props) {
       <form onSubmit={onSubmit} className="p-2 flex gap-2">
         <input className="flex-1 bg-gray-700 text-gray-100 rounded px-2 py-1 text-sm"
                value={draft} onChange={(e) => setDraft(e.target.value)}
-               placeholder="Nhắn tin..." />
+               placeholder="Type a message..." />
         <button className="bg-blue-600 text-white rounded px-3 text-sm" type="submit">
-          Gửi
+          Send
         </button>
       </form>
     </div>

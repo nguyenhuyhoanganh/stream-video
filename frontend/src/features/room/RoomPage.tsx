@@ -29,20 +29,21 @@ export function RoomPage() {
   }, [code]);
 
   if (join.isError) {
+    // map mã lỗi ổn định của BE (spec 4.8) sang thông báo cho người dùng
     const errCode = isAxiosError(join.error) ? join.error.response?.data?.code : null;
     const detail =
-      errCode === 'MEETING_NOT_STARTED' ? 'Phòng họp chưa bắt đầu. Quay lại sau nhé.'
-      : errCode === 'MEETING_ENDED' ? 'Phòng họp đã kết thúc hoặc bị hủy.'
-      : errCode === 'NOT_A_MEMBER' ? 'Bạn không được mời vào phòng họp này.'
-      : errCode === 'GUEST_MEETING_FORBIDDEN' ? 'Phòng này yêu cầu đăng nhập.'
-      : errCode === 'DISPLAY_NAME_REQUIRED' ? 'Vui lòng quay lại nhập tên hiển thị.'
-      : 'Không vào được phòng họp.';
+      errCode === 'MEETING_NOT_STARTED' ? 'This meeting has not started yet. Please come back later.'
+      : errCode === 'MEETING_ENDED' ? 'This meeting has ended or was cancelled.'
+      : errCode === 'NOT_A_MEMBER' ? 'You have not been invited to this meeting.'
+      : errCode === 'GUEST_MEETING_FORBIDDEN' ? 'This meeting requires you to sign in.'
+      : errCode === 'DISPLAY_NAME_REQUIRED' ? 'Please go back and enter a display name.'
+      : 'Could not join this meeting.';
     return (
       <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center gap-4 text-white">
         <p>{detail}</p>
         <button onClick={() => navigate(user ? '/' : `/m/${code}`)}
                 className="bg-blue-600 rounded-lg px-4 py-2">
-          Quay lại
+          Back
         </button>
       </div>
     );
@@ -51,7 +52,7 @@ export function RoomPage() {
   if (!join.data) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
-        Đang kết nối...
+        Connecting...
       </div>
     );
   }

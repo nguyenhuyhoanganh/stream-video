@@ -35,28 +35,28 @@ export function ControlBar({ meetingId, role, onRaiseHand, onEnd }: Props) {
       )}
       <button onClick={onRaiseHand}
               className="bg-yellow-500 text-black rounded-lg px-3 py-2 text-sm font-medium">
-        ✋ Giơ tay
+        ✋ Raise hand
       </button>
       {role === 'HOST' && (
         recActive ? (
           <button onClick={() => stopRec.mutate()}
                   className="bg-red-600 text-white rounded-lg px-3 py-2 text-sm animate-pulse">
-            ⏹ Dừng ghi
+            ⏹ Stop recording
           </button>
         ) : (
           <button onClick={() => startRec.mutate()}
                   className="bg-gray-700 text-white rounded-lg px-3 py-2 text-sm">
-            ⏺ Ghi hình
+            ⏺ Record
           </button>
         )
       )}
       {role === 'HOST' && onEnd && (
         <button onClick={onEnd}
                 className="bg-red-700 text-white rounded-lg px-3 py-2 text-sm font-medium">
-          Kết thúc họp
+          End meeting
         </button>
       )}
-      <DisconnectButton className="lk-button">Rời phòng</DisconnectButton>
+      <DisconnectButton className="lk-button">Leave</DisconnectButton>
     </div>
   );
 }

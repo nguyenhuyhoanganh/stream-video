@@ -18,7 +18,7 @@ export function DashboardPage() {
   const [membersFor, setMembersFor] = useState<string | null>(null);
 
   async function meetNow() {
-    const m = await createMeeting.mutateAsync({ title: 'Họp nhanh' });
+    const m = await createMeeting.mutateAsync({ title: 'Quick meeting' });
     navigate(`/m/${m.code}`);
   }
 
@@ -40,7 +40,7 @@ export function DashboardPage() {
         <div className="flex items-center gap-3 text-sm">
           <span className="text-gray-700">{user?.fullName}</span>
           <button onClick={() => void logout()} className="text-gray-500 hover:text-gray-800">
-            Đăng xuất
+            Sign out
           </button>
         </div>
       </header>
@@ -49,64 +49,64 @@ export function DashboardPage() {
         <div className="flex gap-3">
           <button onClick={() => void meetNow()} disabled={createMeeting.isPending}
                   className="bg-blue-600 text-white rounded-lg px-5 py-2.5 font-medium disabled:opacity-50">
-            Họp ngay
+            Meet now
           </button>
         </div>
 
         <form onSubmit={schedule} className="bg-white rounded-xl shadow p-4 flex gap-3 items-end">
           <label className="flex-1 text-sm">
-            Tiêu đề
+            Title
             <input className="mt-1 w-full border rounded-lg px-3 py-2" value={title}
-                   onChange={(e) => setTitle(e.target.value)} required placeholder="Họp team tuần" />
+                   onChange={(e) => setTitle(e.target.value)} required placeholder="Weekly team sync" />
           </label>
           <label className="text-sm">
-            Bắt đầu lúc
+            Starts at
             <input className="mt-1 border rounded-lg px-3 py-2" type="datetime-local"
                    value={startAt} onChange={(e) => setStartAt(e.target.value)} />
           </label>
           <label className="text-sm">
-            Loại phòng
+            Room type
             <select className="mt-1 border rounded-lg px-3 py-2" value={roomType}
                     onChange={(e) => setRoomType(e.target.value as 'MEETING' | 'WEBINAR')}>
-              <option value="MEETING">Họp kín</option>
+              <option value="MEETING">Private meeting</option>
               <option value="WEBINAR">Webinar</option>
             </select>
           </label>
           <button className="bg-gray-800 text-white rounded-lg px-4 py-2 disabled:opacity-50"
                   disabled={createMeeting.isPending} type="submit">
-            Đặt lịch
+            Schedule
           </button>
         </form>
 
         <section className="bg-white rounded-xl shadow divide-y">
-          <h2 className="px-4 py-3 font-semibold">Meeting của tôi</h2>
-          {isLoading && <p className="px-4 py-3 text-gray-500">Đang tải...</p>}
+          <h2 className="px-4 py-3 font-semibold">My meetings</h2>
+          {isLoading && <p className="px-4 py-3 text-gray-500">Loading...</p>}
           {meetings?.length === 0 && (
-            <p className="px-4 py-3 text-gray-500">Chưa có meeting nào</p>
+            <p className="px-4 py-3 text-gray-500">No meetings yet</p>
           )}
           {meetings?.map((m) => (
             <div key={m.id} className="px-4 py-3 flex items-center justify-between">
               <div>
                 <p className="font-medium">{m.title}</p>
                 <p className="text-sm text-gray-500">
-                  {new Date(m.scheduledStartAt).toLocaleString('vi-VN')} · {m.code} · {m.status}
+                  {new Date(m.scheduledStartAt).toLocaleString('en-US')} · {m.code} · {m.status}
                 </p>
               </div>
               <span className="flex items-center gap-3">
                 <button onClick={() => setMembersFor(m.id)}
                         className="text-gray-600 text-sm hover:underline">
-                  Thành viên
+                  Members
                 </button>
                 {m.status === 'ENDED' && (
                   <button onClick={() => navigate(`/recordings/${m.id}`)}
                           className="text-gray-600 text-sm hover:underline">
-                    Bản ghi
+                    Recordings
                   </button>
                 )}
                 {(m.status === 'SCHEDULED' || m.status === 'LIVE') && (
                   <button onClick={() => navigate(`/m/${m.code}`)}
                           className="text-blue-600 font-medium hover:underline">
-                    Vào phòng
+                    Join
                   </button>
                 )}
               </span>

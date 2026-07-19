@@ -7,11 +7,11 @@ test.setTimeout(300_000);
 async function registerAndLogin(page: Page, name: string) {
   const email = `${name}-${Date.now()}@e2e.meetly.dev`;
   await page.goto('/register');
-  await page.getByPlaceholder('Họ tên').fill(name);
+  await page.getByPlaceholder('Full name').fill(name);
   await page.getByPlaceholder('Email').fill(email);
-  await page.getByPlaceholder('Mật khẩu (≥ 8 ký tự)').fill('secret123');
-  await page.getByRole('button', { name: 'Đăng ký' }).click();
-  await expect(page.getByRole('button', { name: 'Họp ngay' })).toBeVisible();
+  await page.getByPlaceholder('Password (min. 8 characters)').fill('secret123');
+  await page.getByRole('button', { name: 'Sign up' }).click();
+  await expect(page.getByRole('button', { name: 'Meet now' })).toBeVisible();
 }
 
 test('DoD: host record → MP4 MinIO → playback; end meeting tự dừng ghi', async ({ browser }) => {
@@ -20,9 +20,9 @@ test('DoD: host record → MP4 MinIO → playback; end meeting tự dừng ghi',
 
   await registerAndLogin(page, 'Rec');
   const joinResPromise = page.waitForResponse((r) => r.url().includes('/join') && r.ok());
-  await page.getByRole('button', { name: 'Họp ngay' }).click();
+  await page.getByRole('button', { name: 'Meet now' }).click();
   await page.waitForURL(/\/m\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/);
-  await page.getByRole('button', { name: 'Vào phòng' }).click();
+  await page.getByRole('button', { name: 'Join' }).click();
   const joinRes = await joinResPromise;
   const { meetingId } = (await joinRes.json()) as { meetingId: string };
   await expect(page.locator('.lk-participant-tile')).toHaveCount(1, { timeout: 20_000 });
@@ -33,14 +33,14 @@ test('DoD: host record → MP4 MinIO → playback; end meeting tự dừng ghi',
   const auth = { Authorization: `Bearer ${accessToken}` };
 
   // 1) Bấm ghi hình → nút chuyển Dừng ghi
-  await page.getByRole('button', { name: '⏺ Ghi hình' }).click();
-  await expect(page.getByRole('button', { name: '⏹ Dừng ghi' })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: '⏺ Record' }).click();
+  await expect(page.getByRole('button', { name: '⏹ Stop recording' })).toBeVisible({ timeout: 15_000 });
 
   // ghi ~20s
   await page.waitForTimeout(20_000);
 
   // 2) Dừng ghi → chờ webhook egress_ended → COMPLETED
-  await page.getByRole('button', { name: '⏹ Dừng ghi' }).click();
+  await page.getByRole('button', { name: '⏹ Stop recording' }).click();
   const rec1 = await pollCompleted(page, meetingId, auth, 1);
   expect(rec1.status).toBe('COMPLETED');
 
@@ -56,10 +56,10 @@ test('DoD: host record → MP4 MinIO → playback; end meeting tự dừng ghi',
   console.log(`MP4 size: ${body.byteLength} bytes, url: ${url.split('?')[0]}`);
 
   // 4) Ghi lại lần 2 rồi Kết thúc họp → egress tự dừng → COMPLETED
-  await page.getByRole('button', { name: '⏺ Ghi hình' }).click();
-  await expect(page.getByRole('button', { name: '⏹ Dừng ghi' })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: '⏺ Record' }).click();
+  await expect(page.getByRole('button', { name: '⏹ Stop recording' })).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(8_000);
-  await page.getByRole('button', { name: 'Kết thúc họp' }).click();
+  await page.getByRole('button', { name: 'End meeting' }).click();
   const rec2 = await pollCompleted(page, meetingId, auth, 2);
   expect(rec2.status).toBe('COMPLETED');
 

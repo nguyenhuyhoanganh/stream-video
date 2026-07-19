@@ -22,9 +22,9 @@ describe('ProtectedRoute', () => {
     useAuthStore.setState({ user: null, accessToken: null, ready: false });
   });
 
-  it('hiện loading khi chưa ready', () => {
+  it('hiện loading khi chưa ready (UI tiếng Anh)', () => {
     renderAt('/');
-    expect(screen.getByText('Đang tải...')).toBeTruthy();
+    expect(screen.getByText('Loading...')).toBeTruthy();
   });
 
   it('redirect /login khi ready mà không có user', () => {

@@ -43,12 +43,12 @@ export function RoomLayout({ meetingId, role }: Props) {
     <div className="h-screen flex flex-col bg-gray-900">
       {connectionState === ConnectionState.Reconnecting && (
         <div className="bg-yellow-600 text-black text-center text-sm py-1">
-          Đang kết nối lại...
+          Reconnecting...
         </div>
       )}
       {promotedToast && (
         <div className="bg-green-600 text-white text-center text-sm py-1">
-          Bạn đã được cấp quyền phát biểu 🎤
+          You can now speak 🎤
         </div>
       )}
       <div className="flex-1 flex min-h-0">
@@ -71,6 +71,7 @@ export function RoomLayout({ meetingId, role }: Props) {
           </div>
         </aside>
       </div>
+      {/* raise hand do ChatPanel thực thi (gửi message RAISE_HAND) */}
       <ControlBar meetingId={meetingId} role={role} onRaiseHand={() => raiseHandRef.current?.()}
                   onEnd={role === 'HOST' ? () => end.mutate() : undefined} />
       <RoomAudioRenderer />
