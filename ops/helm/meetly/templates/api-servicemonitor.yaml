@@ -1,0 +1,14 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: meetly-api
+  labels: {{- toYaml .Values.monitoring.serviceMonitorLabels | nindent 4 }}
+spec:
+  selector:
+    matchLabels: { app: meetly-api }
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+{{- end }}

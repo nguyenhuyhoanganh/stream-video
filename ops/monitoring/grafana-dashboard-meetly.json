@@ -1,0 +1,32 @@
+{
+  "title": "Meetly Overview",
+  "uid": "meetly-overview",
+  "timezone": "browser",
+  "panels": [
+    {
+      "title": "API p95 latency", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\".*meetly-api.*\"}[5m])) by (le))"}]
+    },
+    {
+      "title": "API request rate theo status", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{"expr": "sum(rate(http_server_requests_seconds_count{job=~\".*meetly-api.*\"}[5m])) by (status)"}]
+    },
+    {
+      "title": "LiveKit participants / rooms", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {"expr": "livekit_participant_total", "legendFormat": "participants"},
+        {"expr": "livekit_room_total", "legendFormat": "rooms"}
+      ]
+    },
+    {
+      "title": "JVM heap used", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "sum(jvm_memory_used_bytes{area=\"heap\", job=~\".*meetly-api.*\"}) by (pod)"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}
