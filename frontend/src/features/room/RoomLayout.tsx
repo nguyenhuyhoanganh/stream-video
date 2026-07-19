@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   GridLayout, FocusLayout, ParticipantTile, RoomAudioRenderer,
   useTracks, useRoomContext, useConnectionState,
 } from '@livekit/components-react';
 import { ConnectionState, RoomEvent, Track } from 'livekit-client';
 import type { MeetingRole } from '../../api/types';
+import { ChatPanel } from './ChatPanel';
 import { ControlBar } from './ControlBar';
 import { ParticipantList } from './ParticipantList';
 import { useControlActions } from './controlApi';
@@ -16,6 +17,7 @@ export function RoomLayout({ meetingId, role }: Props) {
   const connectionState = useConnectionState();
   const [promotedToast, setPromotedToast] = useState(false);
   const { end } = useControlActions(meetingId);
+  const raiseHandRef = useRef<(() => void) | null>(null);
 
   const tracks = useTracks(
     [
@@ -60,10 +62,16 @@ export function RoomLayout({ meetingId, role }: Props) {
           )}
         </div>
         <aside className="w-72 bg-gray-800 border-l border-gray-700 flex flex-col">
-          <ParticipantList meetingId={meetingId} role={role} />
+          <div className="flex-1 min-h-0 border-b border-gray-700">
+            <ParticipantList meetingId={meetingId} role={role} />
+          </div>
+          <div className="flex-1 min-h-0">
+            <ChatPanel meetingId={meetingId} role={role}
+                       registerRaiseHand={(fn) => (raiseHandRef.current = fn)} />
+          </div>
         </aside>
       </div>
-      <ControlBar role={role} onRaiseHand={() => { /* nối ChatPanel ở Task 12 */ }}
+      <ControlBar role={role} onRaiseHand={() => raiseHandRef.current?.()}
                   onEnd={role === 'HOST' ? () => end.mutate() : undefined} />
       <RoomAudioRenderer />
     </div>
