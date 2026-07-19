@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.POST,
                         "/api/v1/meetings/*/join").permitAll()
                 .requestMatchers("/api/v1/livekit/webhook").permitAll()
+                .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(eh -> eh.authenticationEntryPoint((req, res, ex) -> {
                 res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
