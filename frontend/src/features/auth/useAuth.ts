@@ -20,9 +20,18 @@ export function useAuth() {
       navigate('/');
     },
     async logout() {
-      await api.post('/auth/logout');
-      clear();
-      navigate('/login');
+      // Clear the local session even when the call fails: a network blip must not
+      // leave the user staring at a dashboard they believe they signed out of.
+      // The refresh token stays valid server-side until it expires, which is why
+      // the request is still attempted first.
+      try {
+        await api.post('/auth/logout');
+      } catch {
+        // ignored on purpose — see above
+      } finally {
+        clear();
+        navigate('/login');
+      }
     },
   };
 }

@@ -15,10 +15,18 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: api
           image: {{ include "meetly.apiImage" . }}
           ports: [{ containerPort: 8080 }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          # readOnlyRootFilesystem: the JVM still needs a writable /tmp
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
           envFrom:
             - secretRef: { name: {{ .Values.api.existingSecret }} }
           env:
@@ -33,3 +41,6 @@ spec:
             httpGet: { path: /actuator/health/liveness, port: 8080 }
             initialDelaySeconds: 30
           resources: {{- toYaml .Values.api.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}

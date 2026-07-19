@@ -34,9 +34,11 @@ test('webinar: guest is an attendee, host promotes them, chat works', async ({ b
   await expect(guest.getByText('Raise hand')).toBeVisible({ timeout: 20_000 });
   await expect(guest.getByTestId('publish-controls')).toHaveCount(0);
 
-  // chat both ways
-  await guest.getByPlaceholder('Type a message...').fill('Hello from the guest');
-  await guest.getByPlaceholder('Type a message...').press('Enter');
+  // chat both ways — the composer unlocks once STOMP is connected
+  const composer = guest.getByPlaceholder('Type a message...');
+  await expect(composer).toBeEnabled({ timeout: 15_000 });
+  await composer.fill('Hello from the guest');
+  await composer.press('Enter');
   await expect(host.getByText('Hello from the guest')).toBeVisible({ timeout: 10_000 });
 
   // host promotes the guest → toast appears and publish controls show up at runtime

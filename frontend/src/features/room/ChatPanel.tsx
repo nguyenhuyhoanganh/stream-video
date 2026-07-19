@@ -30,7 +30,9 @@ export function ChatPanel({ meetingId, role, registerRaiseHand }: Props) {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!draft.trim()) return;
+    // Sending before STOMP is connected drops the message with no feedback, so the
+    // composer stays disabled until the socket is up (see the header indicator).
+    if (!connected || !draft.trim()) return;
     send(draft.trim());
     setDraft('');
   }
@@ -66,10 +68,12 @@ export function ChatPanel({ meetingId, role, registerRaiseHand }: Props) {
         <div ref={bottomRef} />
       </div>
       <form onSubmit={onSubmit} className="p-2 flex gap-2">
-        <input className="flex-1 bg-gray-700 text-gray-100 rounded px-2 py-1 text-sm"
+        <input className="flex-1 bg-gray-700 text-gray-100 rounded px-2 py-1 text-sm disabled:opacity-50"
                value={draft} onChange={(e) => setDraft(e.target.value)}
+               disabled={!connected}
                placeholder="Type a message..." />
-        <button className="bg-blue-600 text-white rounded px-3 text-sm" type="submit">
+        <button className="bg-blue-600 text-white rounded px-3 text-sm disabled:opacity-50"
+                disabled={!connected} type="submit">
           Send
         </button>
       </form>

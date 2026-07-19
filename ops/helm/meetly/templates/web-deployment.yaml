@@ -13,10 +13,24 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: web
           image: {{ include "meetly.webImage" . }}
           ports: [{ containerPort: 8080 }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          # nginx writes its pid and temp bodies at runtime
+          volumeMounts:
+            - { name: nginx-tmp, mountPath: /tmp }
+            - { name: nginx-cache, mountPath: /var/cache/nginx }
           readinessProbe:
             httpGet: { path: /, port: 8080 }
           resources: {{- toYaml .Values.web.resources | nindent 12 }}
+      volumes:
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}

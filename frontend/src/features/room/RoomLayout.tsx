@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   GridLayout, FocusLayout, ParticipantTile, RoomAudioRenderer,
   useTracks, useRoomContext, useConnectionState,
@@ -18,6 +18,10 @@ export function RoomLayout({ meetingId, role }: Props) {
   const [promotedToast, setPromotedToast] = useState(false);
   const { end } = useControlActions(meetingId);
   const raiseHandRef = useRef<(() => void) | null>(null);
+  // stable identity: an inline arrow would re-run ChatPanel's register effect every render
+  const registerRaiseHand = useCallback((fn: () => void) => {
+    raiseHandRef.current = fn;
+  }, []);
 
   const tracks = useTracks(
     [
@@ -67,7 +71,7 @@ export function RoomLayout({ meetingId, role }: Props) {
           </div>
           <div className="flex-1 min-h-0">
             <ChatPanel meetingId={meetingId} role={role}
-                       registerRaiseHand={(fn) => (raiseHandRef.current = fn)} />
+                       registerRaiseHand={registerRaiseHand} />
           </div>
         </aside>
       </div>
