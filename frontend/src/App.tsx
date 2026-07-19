@@ -22,10 +22,10 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/m/:code" element={<PreJoinPage />} />
+          <Route path="/m/:code/room" element={<RoomPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<DashboardPage />} />
-            <Route path="/m/:code" element={<PreJoinPage />} />
-            <Route path="/m/:code/room" element={<RoomPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -14,6 +14,28 @@ export type Meeting = {
   roomType: 'MEETING' | 'WEBINAR';
 };
 
-export type JoinResponse = { livekitUrl: string; livekitToken: string; role: 'HOST' | 'SPEAKER' };
+export type MeetingRole = 'HOST' | 'SPEAKER' | 'ATTENDEE';
+
+export type JoinResponse = {
+  meetingId: string;
+  livekitUrl: string;
+  livekitToken: string;
+  role: MeetingRole;
+  chatToken: string | null;
+};
+
+export type ChatMessageDto = {
+  id: string;
+  meetingId: string;
+  senderIdentity: string;
+  senderDisplayName: string;
+  content: string;
+  type: 'TEXT' | 'SYSTEM' | 'RAISE_HAND';
+  createdAt: string;
+};
+
+export type ChatEvent =
+  | { kind: 'MESSAGE'; message: ChatMessageDto; messageId: null }
+  | { kind: 'MESSAGE_DELETED'; message: null; messageId: string };
 
 export type ApiError = { status: number; detail: string; code: string; fields?: Record<string, string> };
