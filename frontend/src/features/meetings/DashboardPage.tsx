@@ -97,6 +97,12 @@ export function DashboardPage() {
                         className="text-gray-600 text-sm hover:underline">
                   Thành viên
                 </button>
+                {m.status === 'ENDED' && (
+                  <button onClick={() => navigate(`/recordings/${m.id}`)}
+                          className="text-gray-600 text-sm hover:underline">
+                    Bản ghi
+                  </button>
+                )}
                 {(m.status === 'SCHEDULED' || m.status === 'LIVE') && (
                   <button onClick={() => navigate(`/m/${m.code}`)}
                           className="text-blue-600 font-medium hover:underline">

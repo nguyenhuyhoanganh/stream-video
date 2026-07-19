@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { RegisterPage } from './features/auth/RegisterPage';
 import { DashboardPage } from './features/meetings/DashboardPage';
+import { RecordingsPage } from './features/recordings/RecordingsPage';
 import { PreJoinPage } from './features/room/PreJoinPage';
 import { RoomPage } from './features/room/RoomPage';
 
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/m/:code/room" element={<RoomPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/recordings/:meetingId" element={<RecordingsPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

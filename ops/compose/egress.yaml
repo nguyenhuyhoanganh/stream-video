@@ -1,8 +1,10 @@
 api_key: devkey
 api_secret: meetly_dev_secret_0123456789abcdef
-ws_url: ws://livekit:7880
+# egress chạy network_mode: host — nhìn LiveKit/Redis qua cổng publish trên host
+# (livekit --node-ip 127.0.0.1 quảng bá ICE 127.0.0.1, container thường không với tới)
+ws_url: ws://localhost:7880
 redis:
-  address: redis:6379
+  address: localhost:6379
 insecure: true
 logging:
   level: info

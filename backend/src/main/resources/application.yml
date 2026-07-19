@@ -32,7 +32,7 @@ meetly:
     http-url: http://localhost:7880
   storage:
     endpoint: http://localhost:9000        # presign — browser trên máy host truy cập
-    upload-endpoint: http://minio:9000     # egress CONTAINER upload tới đây (docker network)
+    upload-endpoint: http://localhost:9000 # egress (network_mode host) upload qua cổng publish
     region: us-east-1
     bucket: meetly-recordings
     access-key: minio

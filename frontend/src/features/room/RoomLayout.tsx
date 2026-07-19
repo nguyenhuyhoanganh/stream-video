@@ -71,7 +71,7 @@ export function RoomLayout({ meetingId, role }: Props) {
           </div>
         </aside>
       </div>
-      <ControlBar role={role} onRaiseHand={() => raiseHandRef.current?.()}
+      <ControlBar meetingId={meetingId} role={role} onRaiseHand={() => raiseHandRef.current?.()}
                   onEnd={role === 'HOST' ? () => end.mutate() : undefined} />
       <RoomAudioRenderer />
     </div>
