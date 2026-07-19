@@ -1,0 +1,48 @@
+image:
+  registry: ghcr.io/CHANGEME-org
+  apiRepository: meetly-api
+  webRepository: meetly-web
+  tag: "latest-sha"          # CD ghi đè --set image.tag=$GITHUB_SHA
+
+api:
+  replicas: 2
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1Gi }
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  env:                        # config KHÔNG nhạy cảm
+    SPRING_PROFILES_ACTIVE: prod
+    MEETLY_LIVEKIT_WS_URL: wss://livekit.meetly.example.com
+    MEETLY_LIVEKIT_HTTP_URL: https://livekit.meetly.example.com
+    MEETLY_STORAGE_ENDPOINT: https://s3.ap-southeast-1.amazonaws.com
+    # prod: upload endpoint = endpoint (chỉ dev/MinIO mới khác nhau)
+    MEETLY_STORAGE_UPLOAD_ENDPOINT: https://s3.ap-southeast-1.amazonaws.com
+    MEETLY_STORAGE_REGION: ap-southeast-1
+    MEETLY_STORAGE_BUCKET: meetly-recordings
+    MEETLY_AUTH_COOKIE_SECURE: "true"
+    MEETLY_CORS_ALLOWED_ORIGINS: https://meet.meetly.example.com
+  existingSecret: meetly-api-secrets
+
+web:
+  replicas: 2
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+ingress:
+  className: nginx
+  host: meet.meetly.example.com
+  tlsSecret: meetly-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # WS chat sống lâu
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+monitoring:
+  enabled: true
+  serviceMonitorLabels:
+    release: kube-prometheus-stack

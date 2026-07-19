@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meetly-api
+  labels: { app: meetly-api }
+spec:
+  {{- if not .Values.api.hpa.enabled }}
+  replicas: {{ .Values.api.replicas }}
+  {{- end }}
+  selector:
+    matchLabels: { app: meetly-api }
+  template:
+    metadata:
+      labels: { app: meetly-api }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: api
+          image: {{ include "meetly.apiImage" . }}
+          ports: [{ containerPort: 8080 }]
+          envFrom:
+            - secretRef: { name: {{ .Values.api.existingSecret }} }
+          env:
+            {{- range $k, $v := .Values.api.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            initialDelaySeconds: 20
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            initialDelaySeconds: 30
+          resources: {{- toYaml .Values.api.resources | nindent 12 }}

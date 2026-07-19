@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meetly-web
+  labels: { app: meetly-web }
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels: { app: meetly-web }
+  template:
+    metadata:
+      labels: { app: meetly-web }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: web
+          image: {{ include "meetly.webImage" . }}
+          ports: [{ containerPort: 8080 }]
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+          resources: {{- toYaml .Values.web.resources | nindent 12 }}

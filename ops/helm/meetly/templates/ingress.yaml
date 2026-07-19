@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: meetly
+  annotations: {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts: [{{ .Values.ingress.host }}]
+      secretName: {{ .Values.ingress.tlsSecret }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: meetly-api, port: { number: 80 } } }
+          - path: /ws
+            pathType: Prefix
+            backend: { service: { name: meetly-api, port: { number: 80 } } }
+          # /actuator KHÔNG expose ra ingress: probes gọi thẳng pod,
+          # Prometheus scrape qua ServiceMonitor nội bộ (Task 7)
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: meetly-web, port: { number: 80 } } }
