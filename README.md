@@ -3,7 +3,18 @@
 Hệ thống họp video (BE Spring Boot · FE React · LiveKit SFU).
 Spec: `docs/superpowers/specs/2026-07-18-meetly-video-conferencing-design.md`
 
-> Quy ước: **comment trong code tiếng Việt, giao diện tiếng Anh, tài liệu tiếng Việt.**
+> Quy ước: **code, comment và giao diện viết tiếng Anh; tài liệu viết tiếng Việt.**
+
+## 📖 Bắt đầu từ đâu
+
+Nếu anh/chị mới tiếp cận dự án, đọc theo thứ tự này:
+
+| # | Tài liệu | Nội dung |
+|---|---|---|
+| 1 | [Giải thích công nghệ](docs/01-giai-thich-cong-nghe.md) | Toàn bộ công nghệ trong dự án, giải thích từng thuật ngữ từ đầu — dành cho người biết Spring Boot CRUD và React cơ bản |
+| 2 | [Hướng dẫn chạy và kiểm thử](docs/02-huong-dan-chay-va-test.md) | Cầm tay chỉ việc: cài gì, chạy lệnh nào, thử từng tính năng ra sao, hỏng thì sửa thế nào |
+| 3 | [Thiết kế hệ thống](docs/superpowers/specs/2026-07-18-meetly-video-conferencing-design.md) | Bản thiết kế gốc và các quyết định kiến trúc |
+| 4 | [Runbook vận hành](docs/runbooks/) | Load test và checklist trước khi lên production |
 
 ## Dev quickstart
 
