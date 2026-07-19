@@ -47,7 +47,11 @@ public class WebhookHandler {
                 }
             }
             case "room_finished" -> {
-                meeting.setStatus(MeetingStatus.ENDED);
+                // Host được vào sớm tùy ý (validateJoinable bỏ qua giới hạn 15 phút cho host).
+                // Nếu phòng đóng TRƯỚC giờ hẹn thì đó là buổi vào thử, không phải buổi họp đã
+                // diễn ra — đánh ENDED sẽ giết luôn cuộc họp chưa kịp bắt đầu.
+                boolean daToiGioHop = !Instant.now().isBefore(meeting.getScheduledStartAt());
+                meeting.setStatus(daToiGioHop ? MeetingStatus.ENDED : MeetingStatus.SCHEDULED);
                 sessions.findByMeetingIdAndLeftAtIsNull(meeting.getId())
                         .forEach(s -> s.setLeftAt(Instant.now()));
             }

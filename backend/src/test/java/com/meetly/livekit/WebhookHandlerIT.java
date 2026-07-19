@@ -74,6 +74,28 @@ class WebhookHandlerIT {
                 .isEqualTo(MeetingStatus.ENDED);
     }
 
+    /**
+     * Host được vào phòng bất cứ lúc nào để thử trước. Nếu buổi thử đó (phòng đóng
+     * trước giờ hẹn) đánh dấu ENDED thì cuộc họp ngày mai không ai vào được nữa.
+     */
+    @Test
+    void earlyTestSessionDoesNotKillFutureMeeting() {
+        Meeting future = new Meeting();
+        future.setCode("fut-" + System.nanoTime() % 100000 + "-abc");
+        future.setTitle("Meeting tomorrow");
+        future.setHostId(meeting.getHostId());
+        future.setScheduledStartAt(Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS));
+        meetings.save(future);
+
+        handler.handle(LivekitWebhook.WebhookEvent.newBuilder()
+                .setEvent("room_finished").setId("early-" + System.nanoTime())
+                .setRoom(LivekitModels.Room.newBuilder().setName(future.getCode()))
+                .build());
+
+        assertThat(meetings.findByCode(future.getCode()).orElseThrow().getStatus())
+                .isEqualTo(MeetingStatus.SCHEDULED);
+    }
+
     @Test
     void duplicateEventIgnored() {
         String id = "dup-" + System.nanoTime();
