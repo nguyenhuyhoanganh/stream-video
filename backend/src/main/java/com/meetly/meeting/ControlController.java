@@ -69,7 +69,7 @@ public class ControlController {
         Meeting m = requireHost(meetingId, user.id());
         // identity của user đăng nhập = userId; guest (guest:*) không promote được
         if (!identity.startsWith("guest:")) {
-            UUID targetUserId = UUID.fromString(identity);
+            UUID targetUserId = parseUserIdentity(identity);
             MeetingMember mm = members.findByMeetingIdAndUserId(meetingId, targetUserId)
                     .orElseGet(() -> {
                         // CHECK constraint là (user_id OR invited_email) — có userId là đủ
@@ -83,6 +83,16 @@ public class ControlController {
             members.save(mm);
         }
         roomControl.setRole(m.getCode(), identity, newRole);
+    }
+
+    /** identity rác từ client là lỗi 400, không phải 500. */
+    private UUID parseUserIdentity(String identity) {
+        try {
+            return UUID.fromString(identity);
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED,
+                    "identity không hợp lệ: phải là userId hoặc guest:<uuid>");
+        }
     }
 
     private Meeting requireHost(UUID meetingId, UUID actorId) {

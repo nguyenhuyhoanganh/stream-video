@@ -36,8 +36,11 @@ api.interceptors.response.use(
       refreshing ??= refreshAccessToken().finally(() => (refreshing = null));
       const token = await refreshing;
       if (token) return api(config);
+      // Khách (guest) không có tài khoản để đăng nhập lại — đá họ về /login là
+      // đẩy ra khỏi phòng họp. Chỉ chuyển hướng người đã đăng nhập.
+      const wasLoggedIn = useAuthStore.getState().user !== null;
       useAuthStore.getState().clear();
-      window.location.assign('/login');
+      if (wasLoggedIn) window.location.assign('/login');
     }
     throw error;
   },

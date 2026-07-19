@@ -37,9 +37,10 @@ public class ChatRestController {
         if (after != null) {
             page = chatMessages.findByMeetingIdAndCreatedAtAfterOrderByCreatedAtAsc(meetingId, after);
         } else {
+            // clamp: limit <= 0 làm PageRequest ném IllegalArgumentException → 500
             page = chatMessages.findByMeetingIdAndCreatedAtBeforeOrderByCreatedAtDesc(
                     meetingId, before != null ? before : Instant.now(),
-                    PageRequest.of(0, Math.min(limit, 200)));
+                    PageRequest.of(0, Math.clamp(limit, 1, 200)));
         }
         return page.stream()
                 .filter(m -> m.getDeletedAt() == null)

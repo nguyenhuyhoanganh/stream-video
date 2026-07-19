@@ -81,4 +81,39 @@ class MemberApiIT {
                         .header("Authorization", "Bearer " + hostToken))
                 .andExpect(jsonPath("$.length()").value(0));
     }
+
+    @Test
+    void hostCannotDeleteMemberOfAnotherMeeting() throws Exception {
+        // phòng của host này + 1 thành viên
+        String mine = mvc.perform(post("/api/v1/meetings")
+                        .header("Authorization", "Bearer " + hostToken)
+                        .contentType(APPLICATION_JSON).content("""
+                                {"title":"Phòng của tôi"}"""))
+                .andReturn().getResponse().getContentAsString();
+        String mineId = read(mine, "$.id");
+        String memberId = read(mvc.perform(post("/api/v1/meetings/" + mineId + "/members")
+                        .header("Authorization", "Bearer " + hostToken)
+                        .contentType(APPLICATION_JSON).content("""
+                                {"email":"diengia@x.vn","role":"SPEAKER"}"""))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        // phòng của người khác — họ là host hợp lệ của phòng mình
+        String theirs = mvc.perform(post("/api/v1/meetings")
+                        .header("Authorization", "Bearer " + otherToken)
+                        .contentType(APPLICATION_JSON).content("""
+                                {"title":"Phòng của họ"}"""))
+                .andReturn().getResponse().getContentAsString();
+        String theirsId = read(theirs, "$.id");
+
+        // mượn đường dẫn phòng mình để xoá thành viên phòng khác → phải 404
+        mvc.perform(delete("/api/v1/meetings/" + theirsId + "/members/" + memberId)
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PARTICIPANT_NOT_FOUND"));
+
+        // thành viên phòng gốc còn nguyên
+        mvc.perform(get("/api/v1/meetings/" + mineId + "/members")
+                        .header("Authorization", "Bearer " + hostToken))
+                .andExpect(jsonPath("$.length()").value(1));
+    }
 }

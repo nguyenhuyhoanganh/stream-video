@@ -3,9 +3,13 @@ package com.meetly.common;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +33,32 @@ public class GlobalExceptionHandler {
         ex.getBindingResult().getFieldErrors()
                 .forEach(fe -> fields.put(fe.getField(), fe.getDefaultMessage()));
         pd.setProperty("fields", fields);
+        return pd;
+    }
+
+    /**
+     * Request hỏng do client (JSON sai cú pháp, path variable không phải UUID, query
+     * param sai kiểu, thiếu param). Nếu để rơi xuống handleOther thì mọi lỗi gõ sai của
+     * client thành 5xx — vừa sai hợp đồng API (spec 4.8) vừa làm alert 5xx báo động giả.
+     */
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class
+    })
+    ProblemDetail handleBadRequest(Exception ex) {
+        log.debug("Bad request: {}", ex.getMessage());
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ");
+        pd.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
+        return pd;
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ProblemDetail handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type không được hỗ trợ");
+        pd.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
         return pd;
     }
 

@@ -55,7 +55,14 @@ public class MemberService {
     @Transactional
     public void remove(UUID meetingId, UUID actorId, UUID memberId) {
         requireHost(meetingId, actorId);
-        members.deleteById(memberId);
+        // memberId phải thuộc đúng phòng này: thiếu kiểm tra thì host phòng A
+        // xoá được thành viên phòng B chỉ bằng cách đổi meetingId trên URL
+        MeetingMember mm = members.findById(memberId)
+                .filter(m -> m.getMeetingId().equals(meetingId))
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
+                        ErrorCode.PARTICIPANT_NOT_FOUND,
+                        "Không tìm thấy thành viên trong phòng họp này"));
+        members.delete(mm);
     }
 
     private Meeting requireHost(UUID meetingId, UUID actorId) {
