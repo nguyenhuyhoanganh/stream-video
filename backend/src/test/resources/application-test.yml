@@ -9,5 +9,12 @@ meetly:
     api-secret: meetly_dev_secret_0123456789abcdef
     ws-url: ws://localhost:7880
     http-url: http://localhost:7880
+  storage:
+    endpoint: http://localhost:9000
+    upload-endpoint: http://minio:9000
+    region: us-east-1
+    bucket: meetly-recordings
+    access-key: minio
+    secret-key: minio12345
   cors:
     allowed-origins: http://localhost:5173

@@ -6,7 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties({AuthProperties.class, com.meetly.livekit.LiveKitProperties.class})
+@EnableConfigurationProperties({AuthProperties.class, com.meetly.livekit.LiveKitProperties.class,
+        com.meetly.recording.StorageProperties.class})
 public class MeetlyApplication {
     public static void main(String[] args) {
         SpringApplication.run(MeetlyApplication.class, args);
