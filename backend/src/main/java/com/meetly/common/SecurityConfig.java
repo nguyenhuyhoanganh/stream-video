@@ -33,6 +33,7 @@ public class SecurityConfig {
                         "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST,
                         "/api/v1/meetings/*/join").permitAll()
+                .requestMatchers("/api/v1/livekit/webhook").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(eh -> eh.authenticationEntryPoint((req, res, ex) -> {
                 res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

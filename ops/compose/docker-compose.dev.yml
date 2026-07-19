@@ -26,6 +26,8 @@ services:
   livekit:
     image: livekit/livekit-server:v1.9.1
     command: --config /etc/livekit.yaml --node-ip 127.0.0.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
     ports:
