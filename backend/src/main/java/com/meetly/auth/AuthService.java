@@ -6,6 +6,7 @@ import com.meetly.common.ErrorCode;
 import com.meetly.user.User;
 import com.meetly.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,10 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
+import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -75,14 +79,43 @@ public class AuthService {
         }
     }
 
-    @Transactional
+    // noRollbackFor: nhánh phát hiện tái sử dụng vừa thu hồi phiên vừa ném 401.
+    // Nếu để rollback mặc định thì việc thu hồi bị huỷ theo exception — kẻ trộm
+    // vẫn giữ nguyên phiên, tức là bản vá không có tác dụng gì.
+    @Transactional(noRollbackFor = ApiException.class)
     public User rotate(String rawRefreshToken) {
         RefreshToken current = refreshTokens.findByTokenHash(sha256(rawRefreshToken))
-                .filter(RefreshToken::isActive)
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
-                        ErrorCode.INVALID_REFRESH_TOKEN, "Invalid refresh token"));
+                .orElseThrow(this::invalidRefreshToken);
+
+        if (current.getRevokedAt() != null) {
+            // Token đã thu hồi mà vẫn có người dùng lại: hoặc token bị đánh cắp, hoặc
+            // bản sao cũ còn sót. Không phân biệt được nên xử lý theo hướng an toàn —
+            // thu hồi toàn bộ phiên của user, buộc đăng nhập lại (khuyến nghị OWASP).
+            int revoked = revokeAllSessions(current.getUserId());
+            log.warn("Phát hiện tái sử dụng refresh token của user {} — đã thu hồi {} phiên",
+                    current.getUserId(), revoked);
+            throw invalidRefreshToken();
+        }
+        if (!current.isActive()) throw invalidRefreshToken();   // hết hạn tự nhiên
+
         current.setRevokedAt(Instant.now());
-        return users.findById(current.getUserId()).orElseThrow();
+        return users.findById(current.getUserId())
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
+                        ErrorCode.INVALID_CREDENTIALS, "Account no longer exists"));
+    }
+
+    /** Thu hồi mọi refresh token còn sống của user. Trả về số phiên bị thu hồi. */
+    @Transactional
+    public int revokeAllSessions(UUID userId) {
+        List<RefreshToken> active = refreshTokens.findByUserIdAndRevokedAtIsNull(userId);
+        Instant now = Instant.now();
+        active.forEach(t -> t.setRevokedAt(now));
+        return active.size();
+    }
+
+    private ApiException invalidRefreshToken() {
+        return new ApiException(HttpStatus.UNAUTHORIZED,
+                ErrorCode.INVALID_REFRESH_TOKEN, "Invalid refresh token");
     }
 
     @Transactional
