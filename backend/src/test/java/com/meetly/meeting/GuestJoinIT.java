@@ -47,13 +47,13 @@ class GuestJoinIT {
                 {"title":"Public webinar","roomType":"WEBINAR"}""");
         String res = mvc.perform(post("/api/v1/meetings/" + code + "/join")
                         .contentType(APPLICATION_JSON).content("""
-                                {"displayName":"Khách A"}"""))
+                                {"displayName":"Guest A"}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("ATTENDEE"))
                 .andExpect(jsonPath("$.chatToken").isNotEmpty())
                 .andExpect(jsonPath("$.meetingId").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
-        // identity trong livekit token là guest:*
+        // the identity in the livekit token is guest:*
         io.jsonwebtoken.Claims claims = io.jsonwebtoken.Jwts.parser()
                 .verifyWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(
                         "meetly_dev_secret_0123456789abcdef".getBytes()))
@@ -76,7 +76,7 @@ class GuestJoinIT {
                 {"title":"Private","roomType":"MEETING"}""");
         mvc.perform(post("/api/v1/meetings/" + code + "/join")
                         .contentType(APPLICATION_JSON).content("""
-                                {"displayName":"Khách"}"""))
+                                {"displayName":"Guest"}"""))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("GUEST_MEETING_FORBIDDEN"));
     }

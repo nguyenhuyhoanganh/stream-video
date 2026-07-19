@@ -40,8 +40,8 @@ meetly:
     ws-url: ws://localhost:7880
     http-url: http://localhost:7880
   storage:
-    endpoint: http://localhost:9000        # presign — browser trên máy host truy cập
-    upload-endpoint: http://localhost:9000 # egress (network_mode host) upload qua cổng publish
+    endpoint: http://localhost:9000        # presign target — reached by the browser on the host
+    upload-endpoint: http://localhost:9000 # egress (network_mode host) uploads via the published port
     region: us-east-1
     bucket: meetly-recordings
     access-key: minio

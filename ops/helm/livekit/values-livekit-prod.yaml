@@ -8,11 +8,11 @@ livekit:
     port_range_end: 60000
     use_external_ip: true
   redis:
-    address: "CHANGEME-redis-host:6379"   # managed redis, cùng redis với egress
+    address: "CHANGEME-redis-host:6379"   # managed redis, shared with egress
   # keys: inject khi install:
   #   --set livekit.keys.<API_KEY>=<API_SECRET>
   turn:
-    enabled: false   # dùng coturn riêng (Task 9)
+    enabled: false   # a standalone coturn is used instead (Task 9)
   prometheus:
     port: 6789
 
@@ -23,11 +23,11 @@ tolerations:
     value: livekit
     effect: NoSchedule
 
-# hostNetwork để UDP đi thẳng vào node public IP
+# hostNetwork so UDP goes straight to the node public IP
 hostNetwork: true
 
 loadBalancer:
-  type: disable   # media không đi qua LB; chỉ signalling ws đi qua ingress riêng
+  type: disable   # media bypasses the LB; only ws signalling goes through its own ingress
 ingress:
   enabled: true
   className: nginx

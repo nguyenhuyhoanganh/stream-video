@@ -35,7 +35,7 @@ public class JwtService {
                 .compact();
     }
 
-    /** @throws io.jsonwebtoken.JwtException nếu token sai chữ ký / hết hạn / rác */
+    /** @throws io.jsonwebtoken.JwtException when the token is malformed, expired or badly signed */
     public AccessTokenClaims parse(String token) {
         Claims c = Jwts.parser().verifyWith(key).build()
                 .parseSignedClaims(token).getPayload();
@@ -55,7 +55,7 @@ public class JwtService {
                 .compact();
     }
 
-    /** Trả AuthenticatedUser (access token) hoặc GuestUser (guest token). */
+    /** Returns an AuthenticatedUser (access token) or a GuestUser (guest token). */
     public Object parsePrincipal(String token) {
         Claims c = Jwts.parser().verifyWith(key).build()
                 .parseSignedClaims(token).getPayload();

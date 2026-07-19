@@ -61,7 +61,7 @@ class ChatRestIT {
                 .andReturn().getResponse().getContentAsString();
         String msg1Id = read(list, "$[0].id");
 
-        // host xóa msg 1 → còn 1
+        // host deletes msg 1 → one left
         mvc.perform(delete("/api/v1/meetings/" + meetingId + "/messages/" + msg1Id)
                         .header("Authorization", "Bearer " + hostToken))
                 .andExpect(status().isNoContent());
@@ -70,16 +70,16 @@ class ChatRestIT {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].content").value("msg 2"));
 
-        // guest token đọc được history phòng mình
+        // a guest token can read the history of its own meeting
         String guestJwt = jwtService.generateGuestToken(UUID.fromString(meetingId),
-                "guest:abc", "Khách", java.time.Instant.now().plusSeconds(3600));
+                "guest:abc", "Guest", java.time.Instant.now().plusSeconds(3600));
         mvc.perform(get("/api/v1/meetings/" + meetingId + "/messages")
                         .header("Authorization", "Bearer " + guestJwt))
                 .andExpect(status().isOk());
 
-        // guest token thuộc phòng KHÁC (meetingId ngẫu nhiên) gọi vào phòng này → 403
+        // a guest token for ANOTHER meeting (random id) used here → 403
         String otherGuest = jwtService.generateGuestToken(UUID.randomUUID(),
-                "guest:zzz", "Khách", java.time.Instant.now().plusSeconds(3600));
+                "guest:zzz", "Guest", java.time.Instant.now().plusSeconds(3600));
         mvc.perform(get("/api/v1/meetings/" + meetingId + "/messages")
                         .header("Authorization", "Bearer " + otherGuest))
                 .andExpect(status().isForbidden());
@@ -87,7 +87,7 @@ class ChatRestIT {
 
     @Test
     void strangerCannotReadPrivateMeetingHistory() throws Exception {
-        // phòng KÍN (MEETING) — user đăng nhập nhưng không phải member → 403
+        // PRIVATE room (MEETING) — signed in but not a member → 403
         String created = mvc.perform(post("/api/v1/meetings")
                         .header("Authorization", "Bearer " + hostToken)
                         .contentType(APPLICATION_JSON).content("""
@@ -107,9 +107,9 @@ class ChatRestIT {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("NOT_A_MEMBER"));
 
-        // guest token của phòng KHÁC gọi vào phòng này → 403
+        // a guest token for another meeting used here → 403
         String foreignGuest = jwtService.generateGuestToken(
-                UUID.fromString(meetingId), "guest:zzz", "Khách",
+                UUID.fromString(meetingId), "guest:zzz", "Guest",
                 java.time.Instant.now().plusSeconds(3600));
         mvc.perform(get("/api/v1/meetings/" + privateId + "/messages")
                         .header("Authorization", "Bearer " + foreignGuest))

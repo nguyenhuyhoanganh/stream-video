@@ -35,7 +35,7 @@ class ChatStompIT {
 
     @Test
     void sendReceivePersistViaStomp() throws Exception {
-        // chuẩn bị: user + webinar
+        // arrange: a user and a webinar
         String reg = mvc.perform(post("/api/v1/auth/register").contentType(APPLICATION_JSON)
                         .content("""
                                 {"email":"chat+%d@meetly.dev","password":"secret123","fullName":"Chatter"}"""
@@ -69,17 +69,17 @@ class ChatStompIT {
                 received.add((Map<String, Object>) payload);
             }
         });
-        Thread.sleep(500); // chờ subscribe ổn định
+        Thread.sleep(500); // let the subscription settle
 
         session.send("/app/meetings/" + meetingId + "/chat",
-                Map.of("content", "Xin chào webinar", "type", "TEXT"));
+                Map.of("content", "Hello webinar", "type", "TEXT"));
 
         Map<String, Object> event = received.poll(10, TimeUnit.SECONDS);
         assertThat(event).isNotNull();
         assertThat(event.get("kind")).isEqualTo("MESSAGE");
         @SuppressWarnings("unchecked")
         Map<String, Object> msg = (Map<String, Object>) event.get("message");
-        assertThat(msg.get("content")).isEqualTo("Xin chào webinar");
+        assertThat(msg.get("content")).isEqualTo("Hello webinar");
         assertThat(msg.get("senderDisplayName")).isEqualTo("Chatter");
 
         session.disconnect();

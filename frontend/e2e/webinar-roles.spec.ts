@@ -10,11 +10,11 @@ async function registerAndLogin(page: Page, name: string) {
   await expect(page.getByRole('button', { name: 'Meet now' })).toBeVisible();
 }
 
-test('webinar: guest là khán giả, host promote, chat hoạt động', async ({ browser }) => {
+test('webinar: guest is an attendee, host promotes them, chat works', async ({ browser }) => {
   const host = await (await browser.newContext()).newPage();
   const guest = await (await browser.newContext()).newPage();
 
-  // Host tạo webinar qua form đặt lịch
+  // the host schedules a webinar
   await registerAndLogin(host, 'Host');
   await host.getByPlaceholder('Weekly team sync').fill('Webinar e2e');
   await host.locator('select').first().selectOption('WEBINAR');
@@ -25,21 +25,21 @@ test('webinar: guest là khán giả, host promote, chat hoạt động', async 
   await host.getByRole('button', { name: 'Join' }).click();
   await expect(host.locator('.lk-participant-tile')).toHaveCount(1, { timeout: 20_000 });
 
-  // Guest (không đăng nhập) vào bằng link, nhập tên
+  // a guest (not signed in) opens the link and types a name
   await guest.goto(`/m/${code}`);
   await guest.locator('input#username, input[name="username"]').fill('Guest Duy');
   await guest.getByRole('button', { name: 'Join' }).click();
 
-  // Guest là ATTENDEE: không có cụm nút publish (mic/cam/share)
+  // the guest is an ATTENDEE: no publish controls (mic/cam/share)
   await expect(guest.getByText('Raise hand')).toBeVisible({ timeout: 20_000 });
   await expect(guest.getByTestId('publish-controls')).toHaveCount(0);
 
-  // Chat 2 chiều
+  // chat both ways
   await guest.getByPlaceholder('Type a message...').fill('Hello from the guest');
   await guest.getByPlaceholder('Type a message...').press('Enter');
   await expect(host.getByText('Hello from the guest')).toBeVisible({ timeout: 10_000 });
 
-  // Host promote guest → guest thấy toast + cụm nút publish xuất hiện runtime
+  // host promotes the guest → toast appears and publish controls show up at runtime
   await host.getByTitle('Allow to speak').first().click();
   await expect(guest.getByText('You can now speak 🎤')).toBeVisible({ timeout: 10_000 });
   await expect(guest.getByTestId('publish-controls')).toHaveCount(1, { timeout: 10_000 });

@@ -20,7 +20,7 @@ export function ParticipantList({ meetingId, role }: Props) {
           <span>
             {p.name || p.identity}
             {p.isLocal && ' (you)'}
-            {/* 👁 = khán giả, không có quyền publish */}
+            {/* 👁 marks an attendee with no publishing rights */}
             {p.permissions?.canPublish === false && ' 👁'}
           </span>
           {isHost && !p.isLocal && (

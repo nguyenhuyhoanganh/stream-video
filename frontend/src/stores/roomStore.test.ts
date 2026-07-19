@@ -4,7 +4,7 @@ import { useRoomStore } from './roomStore';
 describe('roomStore', () => {
   beforeEach(() => useRoomStore.getState().clear());
 
-  it('lưu join info', () => {
+  it('stores the join info', () => {
     useRoomStore.getState().setJoin({
       meetingId: 'm1', livekitUrl: 'ws://x', livekitToken: 't', role: 'ATTENDEE', chatToken: 'ct',
     });

@@ -79,24 +79,24 @@ public class AuthService {
         }
     }
 
-    // noRollbackFor: nhánh phát hiện tái sử dụng vừa thu hồi phiên vừa ném 401.
-    // Nếu để rollback mặc định thì việc thu hồi bị huỷ theo exception — kẻ trộm
-    // vẫn giữ nguyên phiên, tức là bản vá không có tác dụng gì.
+    // noRollbackFor: the reuse-detection branch both revokes sessions and throws 401.
+    // With the default rollback the revocation is undone along with the exception,
+    // leaving the thief's session intact — the fix would do nothing.
     @Transactional(noRollbackFor = ApiException.class)
     public User rotate(String rawRefreshToken) {
         RefreshToken current = refreshTokens.findByTokenHash(sha256(rawRefreshToken))
                 .orElseThrow(this::invalidRefreshToken);
 
         if (current.getRevokedAt() != null) {
-            // Token đã thu hồi mà vẫn có người dùng lại: hoặc token bị đánh cắp, hoặc
-            // bản sao cũ còn sót. Không phân biệt được nên xử lý theo hướng an toàn —
-            // thu hồi toàn bộ phiên của user, buộc đăng nhập lại (khuyến nghị OWASP).
+            // A revoked token being presented again means either theft or a stale copy.
+            // We cannot tell them apart, so take the safe path: revoke every session of
+            // the user and force a fresh sign-in (OWASP recommendation).
             int revoked = revokeAllSessions(current.getUserId());
-            log.warn("Phát hiện tái sử dụng refresh token của user {} — đã thu hồi {} phiên",
+            log.warn("Refresh token reuse detected for user {} — revoked {} sessions",
                     current.getUserId(), revoked);
             throw invalidRefreshToken();
         }
-        if (!current.isActive()) throw invalidRefreshToken();   // hết hạn tự nhiên
+        if (!current.isActive()) throw invalidRefreshToken();   // expired naturally
 
         current.setRevokedAt(Instant.now());
         return users.findById(current.getUserId())
@@ -104,7 +104,7 @@ public class AuthService {
                         ErrorCode.INVALID_CREDENTIALS, "Account no longer exists"));
     }
 
-    /** Thu hồi mọi refresh token còn sống của user. Trả về số phiên bị thu hồi. */
+    /** Revokes every live refresh token of the user. Returns how many were revoked. */
     @Transactional
     public int revokeAllSessions(UUID userId) {
         List<RefreshToken> active = refreshTokens.findByUserIdAndRevokedAtIsNull(userId);

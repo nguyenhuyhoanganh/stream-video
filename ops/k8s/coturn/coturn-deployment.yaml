@@ -11,7 +11,7 @@ spec:
     metadata:
       labels: { app: coturn }
     spec:
-      # KHÔNG hostNetwork: public traffic đi qua Service LoadBalancer bên dưới
+      # NO hostNetwork: public traffic arrives through the LoadBalancer Service below
       nodeSelector: { role: livekit }
       containers:
         - name: coturn

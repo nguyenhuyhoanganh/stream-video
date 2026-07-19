@@ -37,9 +37,9 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Request hỏng do client (JSON sai cú pháp, path variable không phải UUID, query
-     * param sai kiểu, thiếu param). Nếu để rơi xuống handleOther thì mọi lỗi gõ sai của
-     * client thành 5xx — vừa sai hợp đồng API (spec 4.8) vừa làm alert 5xx báo động giả.
+     * Client-side malformed requests (bad JSON, non-UUID path variable, wrong query
+     * param type, missing param). Letting these fall through to handleOther turns every
+     * client typo into a 5xx — breaking the API contract (spec 4.8) and firing false 5xx alerts.
      */
     @ExceptionHandler({
             HttpMessageNotReadableException.class,

@@ -22,18 +22,18 @@ describe('ProtectedRoute', () => {
     useAuthStore.setState({ user: null, accessToken: null, ready: false });
   });
 
-  it('hiện loading khi chưa ready (UI tiếng Anh)', () => {
+  it('shows loading while not ready', () => {
     renderAt('/');
     expect(screen.getByText('Loading...')).toBeTruthy();
   });
 
-  it('redirect /login khi ready mà không có user', () => {
+  it('redirects to /login when ready without a user', () => {
     useAuthStore.setState({ ready: true });
     renderAt('/');
     expect(screen.getByText('login page')).toBeTruthy();
   });
 
-  it('render nội dung khi có user', () => {
+  it('renders the content when a user is present', () => {
     useAuthStore.setState({
       ready: true,
       user: { id: '1', email: 'a@b.c', fullName: 'A' },

@@ -35,7 +35,7 @@ export function MembersDialog({ meetingId, onClose }: Props) {
         <ul className="divide-y max-h-64 overflow-y-auto">
           {members?.map((m) => (
             <li key={m.id} className="py-2 flex justify-between text-sm">
-              {/* email null = người được promote ngay trong phòng, chỉ có userId */}
+              {/* a null email means they were promoted in-room and only have a userId */}
               <span>{m.email ?? '(joined in-room)'} — {m.role === 'SPEAKER' ? 'Speaker' : 'Attendee'}</span>
               <button onClick={() => removeMember.mutate(m.id)}
                       className="text-red-600">Remove</button>

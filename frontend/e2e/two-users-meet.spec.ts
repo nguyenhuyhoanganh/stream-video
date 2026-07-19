@@ -9,17 +9,17 @@ async function registerAndLogin(page: Page, name: string, email: string) {
   await expect(page.getByRole('button', { name: 'Meet now' })).toBeVisible();
 }
 
-test('hai người join cùng phòng kín (được mời) và thấy video của nhau', async ({ browser }) => {
+test('two invited users join the same private room and see each other', async ({ browser }) => {
   const contextA = await browser.newContext();
   const contextB = await browser.newContext();
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
   const bobEmail = `bob-${Date.now()}@e2e.meetly.dev`;
 
-  // Bob đăng ký trước để có tài khoản nhận lời mời
+  // Bob registers first so there is an account to invite
   await registerAndLogin(pageB, 'Bob', bobEmail);
 
-  // Alice tạo phòng kín qua form đặt lịch rồi mời Bob làm Speaker
+  // Alice schedules a private room and invites Bob as a Speaker
   await registerAndLogin(pageA, 'Alice', `alice-${Date.now()}@e2e.meetly.dev`);
   await pageA.getByPlaceholder('Weekly team sync').fill('Two-person meeting');
   await pageA.getByRole('button', { name: 'Schedule' }).click();
@@ -30,18 +30,18 @@ test('hai người join cùng phòng kín (được mời) và thấy video củ
   await expect(pageA.getByText(bobEmail)).toBeVisible();
   await pageA.getByRole('button', { name: 'Close' }).click();
 
-  // Alice vào phòng
+  // Alice joins the room
   await pageA.getByRole('button', { name: 'Join' }).first().click();
   await pageA.waitForURL(/\/m\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/);
   const code = pageA.url().split('/m/')[1];
   await pageA.getByRole('button', { name: 'Join' }).click();
   await expect(pageA.locator('.lk-participant-tile')).toHaveCount(1, { timeout: 20_000 });
 
-  // Bob (đã là member SPEAKER) join bằng code
+  // Bob (already a SPEAKER member) joins by code
   await pageB.goto(`/m/${code}`);
   await pageB.getByRole('button', { name: 'Join' }).click();
 
-  // Cả hai thấy 2 tiles
+  // both see two tiles
   await expect(pageA.locator('.lk-participant-tile')).toHaveCount(2, { timeout: 20_000 });
   await expect(pageB.locator('.lk-participant-tile')).toHaveCount(2, { timeout: 20_000 });
 

@@ -33,7 +33,7 @@ public class ChatService {
     @Transactional
     public void saveAndPublish(UUID meetingId, Object principal, String content,
                                ChatMessageType type) {
-        accessGuard.check(principal, meetingId);   // 404/403 nếu không thuộc phòng
+        accessGuard.check(principal, meetingId);   // 404/403 when not part of the meeting
         String identity;
         String displayName;
         if (principal instanceof GuestUser g) {

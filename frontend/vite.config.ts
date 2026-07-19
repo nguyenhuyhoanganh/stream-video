@@ -14,7 +14,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    // chỉ test trong src — e2e/*.spec.ts là của Playwright, không phải vitest
+    // only test files under src — e2e/*.spec.ts belongs to Playwright, not vitest
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 });

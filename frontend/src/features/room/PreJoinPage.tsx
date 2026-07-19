@@ -11,8 +11,8 @@ export function PreJoinPage() {
   const ready = useAuthStore((s) => s.ready);
   const setDisplayName = useRoomStore((s) => s.setDisplayName);
 
-  // PreJoin chỉ đọc defaults lúc mount — phải chờ bootstrapAuth xong
-  // để user đăng nhập mở link trực tiếp vẫn được prefill tên
+  // PreJoin reads its defaults once at mount, so wait for bootstrapAuth to finish
+  // or a signed-in user opening the link directly loses the prefilled name
   if (!ready) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">

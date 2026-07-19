@@ -33,26 +33,26 @@ class RefreshFlowIT {
         Cookie refresh1 = reg.getResponse().getCookie("meetly_refresh");
         String access = read(reg.getResponse().getContentAsString(), "$.accessToken");
 
-        // /users/me với access token
+        // /users/me with the access token
         mvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("rot@meetly.dev"));
 
-        // không token → 401
+        // no token → 401
         mvc.perform(get("/api/v1/users/me")).andExpect(status().isUnauthorized());
 
-        // refresh → cookie mới, access mới
+        // refresh → new cookie, new access token
         MvcResult ref = mvc.perform(post("/api/v1/auth/refresh").cookie(refresh1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty()).andReturn();
         Cookie refresh2 = ref.getResponse().getCookie("meetly_refresh");
 
-        // token cũ đã bị revoke (rotation) → 401
+        // the old token was revoked by rotation → 401
         mvc.perform(post("/api/v1/auth/refresh").cookie(refresh1))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
 
-        // logout với token mới → 204; dùng lại → 401
+        // logout with the new token → 204; reusing it → 401
         mvc.perform(post("/api/v1/auth/logout").cookie(refresh2))
                 .andExpect(status().isNoContent());
         mvc.perform(post("/api/v1/auth/refresh").cookie(refresh2))

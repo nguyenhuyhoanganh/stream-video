@@ -2,7 +2,7 @@ image:
   registry: ghcr.io/CHANGEME-org
   apiRepository: meetly-api
   webRepository: meetly-web
-  tag: "latest-sha"          # CD ghi đè --set image.tag=$GITHUB_SHA
+  tag: "latest-sha"          # CD overrides this with --set image.tag=$GITHUB_SHA
 
 api:
   replicas: 2
@@ -14,12 +14,12 @@ api:
     minReplicas: 2
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
-  env:                        # config KHÔNG nhạy cảm
+  env:                        # non-sensitive config only
     SPRING_PROFILES_ACTIVE: prod
     MEETLY_LIVEKIT_WS_URL: wss://livekit.meetly.example.com
     MEETLY_LIVEKIT_HTTP_URL: https://livekit.meetly.example.com
     MEETLY_STORAGE_ENDPOINT: https://s3.ap-southeast-1.amazonaws.com
-    # prod: upload endpoint = endpoint (chỉ dev/MinIO mới khác nhau)
+    # in production the upload endpoint equals the endpoint (only dev/MinIO differ)
     MEETLY_STORAGE_UPLOAD_ENDPOINT: https://s3.ap-southeast-1.amazonaws.com
     MEETLY_STORAGE_REGION: ap-southeast-1
     MEETLY_STORAGE_BUCKET: meetly-recordings
@@ -39,7 +39,7 @@ ingress:
   tlsSecret: meetly-tls
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # WS chat sống lâu
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # chat WebSockets are long-lived
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 
 monitoring:

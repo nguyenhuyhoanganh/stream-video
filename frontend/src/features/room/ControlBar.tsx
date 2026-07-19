@@ -12,10 +12,10 @@ type Props = {
 
 export function ControlBar({ meetingId, role, onRaiseHand, onEnd }: Props) {
   const { localParticipant } = useLocalParticipant();
-  // quyền thật đến từ server (có thể vừa được promote runtime)
+  // the real permission comes from the server (they may have just been promoted)
   const canPublish = localParticipant.permissions?.canPublish ?? role !== 'ATTENDEE';
 
-  // chỉ HOST được gọi API recordings — guest/attendee gọi sẽ bị 403
+  // only the HOST may call the recordings API — anyone else gets a 403
   const { data: recs } = useRecordings(meetingId, {
     poll: role === 'HOST',
     enabled: role === 'HOST',

@@ -32,7 +32,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         principal, null, List.of(new SimpleGrantedAuthority(role)));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             } catch (JwtException | IllegalArgumentException ignored) {
-                // token hỏng → đi tiếp không auth; entry point trả 401 nếu route cần auth
+                // broken token → continue unauthenticated; the entry point returns 401 when the route needs auth
             }
         }
         chain.doFilter(req, res);

@@ -39,9 +39,9 @@ class RefreshTokenReuseIT {
     }
 
     /**
-     * Token đã xoay vòng mà bị dùng lại là dấu hiệu bị đánh cắp: phải thu hồi toàn bộ
-     * phiên của user chứ không chỉ từ chối riêng lần gọi đó — nếu không, kẻ trộm giữ
-     * được token mới và dùng tiếp trong khi nạn nhân chỉ thấy mình bị đăng xuất.
+     * Replaying a rotated token signals theft: every session of the user must be revoked,
+     * not just that one call — otherwise the thief keeps the fresh token and carries on
+     * while the victim only notices they were signed out.
      */
     @Test
     void reusingRotatedTokenRevokesEverySession() throws Exception {
@@ -49,17 +49,17 @@ class RefreshTokenReuseIT {
         UUID userId = UUID.fromString(read(reg.getResponse().getContentAsString(), "$.user.id"));
         Cookie stolen = reg.getResponse().getCookie("meetly_refresh");
 
-        // nạn nhân refresh bình thường → token cũ bị xoay vòng, nhận token mới
+        // the victim refreshes normally → the old token rotates out, a new one is issued
         MvcResult ok = mvc.perform(post("/api/v1/auth/refresh").cookie(stolen))
                 .andExpect(status().isOk()).andReturn();
         Cookie fresh = ok.getResponse().getCookie("meetly_refresh");
         assertThat(refreshTokens.findByUserIdAndRevokedAtIsNull(userId)).hasSize(1);
 
-        // kẻ trộm dùng lại bản sao cũ → bị từ chối
+        // the thief replays the old copy → rejected
         mvc.perform(post("/api/v1/auth/refresh").cookie(stolen))
                 .andExpect(status().isUnauthorized());
 
-        // và toàn bộ phiên bị thu hồi: token mới của nạn nhân cũng hết dùng được
+        // and every session is revoked: the victim's fresh token stops working too
         assertThat(refreshTokens.findByUserIdAndRevokedAtIsNull(userId)).isEmpty();
         mvc.perform(post("/api/v1/auth/refresh").cookie(fresh))
                 .andExpect(status().isUnauthorized());
@@ -67,7 +67,7 @@ class RefreshTokenReuseIT {
 
     @Test
     void cleanupRemovesOnlyExpiredTokens() throws Exception {
-        // refresh_tokens.user_id có khoá ngoại → phải dùng user thật
+        // refresh_tokens.user_id is a foreign key, so a real user is required
         UUID userId = UUID.fromString(read(register().getResponse().getContentAsString(), "$.user.id"));
 
         RefreshToken expired = new RefreshToken();
@@ -76,7 +76,7 @@ class RefreshTokenReuseIT {
         expired.setExpiresAt(Instant.now().minus(1, ChronoUnit.DAYS));
         refreshTokens.save(expired);
 
-        // đã thu hồi nhưng chưa hết hạn → phải giữ để còn phát hiện tái sử dụng
+        // revoked but not expired → must be kept so reuse detection still works
         RefreshToken revokedButLive = new RefreshToken();
         revokedButLive.setUserId(userId);
         revokedButLive.setTokenHash("hash-revoked-" + System.nanoTime());
@@ -84,7 +84,7 @@ class RefreshTokenReuseIT {
         revokedButLive.setRevokedAt(Instant.now());
         refreshTokens.save(revokedButLive);
 
-        cleanupJob.purgeExpired();   // gọi qua job thật để chạy trong transaction của nó
+        cleanupJob.purgeExpired();   // go through the real job so it runs in its transaction
 
         assertThat(refreshTokens.findByTokenHash(expired.getTokenHash())).isEmpty();
         assertThat(refreshTokens.findByTokenHash(revokedButLive.getTokenHash())).isPresent();

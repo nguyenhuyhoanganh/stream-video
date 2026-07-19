@@ -54,19 +54,19 @@ class MeetingApiIT {
         String code = read(created, "$.code");
         String id = read(created, "$.id");
 
-        // get by code (người khác cũng xem được — cần cho join)
+        // get by code (visible to others too — needed for join)
         mvc.perform(get("/api/v1/meetings/" + code)
                         .header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Sprint review"));
 
-        // list mine — host thấy 1, other thấy 0
+        // list mine — host sees 1, the other user sees 0
         mvc.perform(get("/api/v1/meetings").header("Authorization", "Bearer " + hostToken))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
         mvc.perform(get("/api/v1/meetings").header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
 
-        // patch — chỉ host
+        // patch — host only
         mvc.perform(patch("/api/v1/meetings/" + id)
                         .header("Authorization", "Bearer " + otherToken)
                         .contentType(APPLICATION_JSON).content("""

@@ -15,7 +15,7 @@ spec:
           for: 5m
           labels: { severity: critical }
           annotations:
-            summary: "meetly-api 5xx > 5% trong 5 phút"
+            summary: "meetly-api 5xx above 5% for 5 minutes"
         - alert: MeetlyApiHighLatency
           expr: >
             histogram_quantile(0.95,
@@ -29,11 +29,11 @@ spec:
           for: 5m
           labels: { severity: warning }
           annotations:
-            summary: "meetly-api pod restart liên tục"
+            summary: "meetly-api pods are restart-looping"
         - alert: LiveKitNodeHighParticipants
           expr: livekit_participant_total > 400
           for: 5m
           labels: { severity: warning }
           annotations:
-            summary: "LiveKit node gần ngưỡng capacity (điều chỉnh sau load test)"
+            summary: "LiveKit node near capacity (retune after the load test)"
 {{- end }}

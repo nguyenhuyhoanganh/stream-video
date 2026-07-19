@@ -1,7 +1,7 @@
 import { expect, test, type Page, type APIResponse } from '@playwright/test';
 
-// Spec DoD Phase 3 — chạy thủ công, không giữ lâu dài trong CI.
-// Ghi hình thật ~20s nên timeout dài.
+// Phase 3 DoD spec — run on demand, not part of the CI smoke suite.
+// It records for ~20s of real video, hence the long timeout.
 test.setTimeout(300_000);
 
 async function registerAndLogin(page: Page, name: string) {
@@ -14,7 +14,7 @@ async function registerAndLogin(page: Page, name: string) {
   await expect(page.getByRole('button', { name: 'Meet now' })).toBeVisible();
 }
 
-test('DoD: host record → MP4 MinIO → playback; end meeting tự dừng ghi', async ({ browser }) => {
+test('DoD: host records → MP4 in MinIO → playback; ending the meeting stops recording', async ({ browser }) => {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
 
@@ -27,24 +27,24 @@ test('DoD: host record → MP4 MinIO → playback; end meeting tự dừng ghi',
   const { meetingId } = (await joinRes.json()) as { meetingId: string };
   await expect(page.locator('.lk-participant-tile')).toHaveCount(1, { timeout: 20_000 });
 
-  // access token để poll API (refresh cookie có sẵn trong context)
+  // access token for polling the API (the refresh cookie already lives in this context)
   const refresh = await page.request.post('/api/v1/auth/refresh');
   const { accessToken } = (await refresh.json()) as { accessToken: string };
   const auth = { Authorization: `Bearer ${accessToken}` };
 
-  // 1) Bấm ghi hình → nút chuyển Dừng ghi
+  // 1) Hit record → the button flips to stop
   await page.getByRole('button', { name: '⏺ Record' }).click();
   await expect(page.getByRole('button', { name: '⏹ Stop recording' })).toBeVisible({ timeout: 15_000 });
 
   // ghi ~20s
   await page.waitForTimeout(20_000);
 
-  // 2) Dừng ghi → chờ webhook egress_ended → COMPLETED
+  // 2) Stop → wait for the egress_ended webhook → COMPLETED
   await page.getByRole('button', { name: '⏹ Stop recording' }).click();
   const rec1 = await pollCompleted(page, meetingId, auth, 1);
   expect(rec1.status).toBe('COMPLETED');
 
-  // 3) Playback presigned URL trả về file thật
+  // 3) The presigned playback URL returns a real file
   const pb = await page.request.get(`/api/v1/recordings/${rec1.id}/playback-url`, { headers: auth });
   expect(pb.ok()).toBeTruthy();
   const { url } = (await pb.json()) as { url: string };
@@ -55,7 +55,7 @@ test('DoD: host record → MP4 MinIO → playback; end meeting tự dừng ghi',
   expect(body.byteLength).toBeGreaterThan(100_000); // MP4 ~20s > 100KB
   console.log(`MP4 size: ${body.byteLength} bytes, url: ${url.split('?')[0]}`);
 
-  // 4) Ghi lại lần 2 rồi Kết thúc họp → egress tự dừng → COMPLETED
+  // 4) Record again, then end the meeting → egress stops on its own → COMPLETED
   await page.getByRole('button', { name: '⏺ Record' }).click();
   await expect(page.getByRole('button', { name: '⏹ Stop recording' })).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(8_000);
@@ -75,10 +75,10 @@ async function pollCompleted(page: Page, meetingId: string, auth: Record<string,
       `/api/v1/meetings/${meetingId}/recordings`, { headers: auth });
     const recs = (await res.json()) as Rec[];
     if (recs.length >= expectCount) {
-      const target = recs[0]; // mới nhất trước
+      const target = recs[0]; // newest first
       if (target.status === 'COMPLETED' || target.status === 'FAILED') return target;
     }
     await page.waitForTimeout(2_000);
   }
-  throw new Error('Recording không COMPLETED trong 90s');
+  throw new Error('Recording did not reach COMPLETED within 90s');
 }

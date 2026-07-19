@@ -16,8 +16,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     List<RefreshToken> findByUserIdAndRevokedAtIsNull(UUID userId);
 
     /**
-     * Dọn token đã hết hạn. Token bị thu hồi nhưng CHƯA hết hạn phải giữ lại, nếu không
-     * việc phát hiện tái sử dụng (rotate) sẽ mất dấu và chỉ trả 401 như token lạ.
+     * Purges expired tokens. A revoked token that has NOT expired yet must be kept,
+     * otherwise reuse detection in rotate loses the trail and just returns a plain 401.
      */
     @Modifying
     @Query("delete from RefreshToken t where t.expiresAt < :cutoff")

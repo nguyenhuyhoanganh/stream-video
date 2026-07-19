@@ -49,7 +49,7 @@ class MemberApiIT {
                 .andReturn().getResponse().getContentAsString();
         String id = read(created, "$.id");
 
-        // host thêm speaker theo email
+        // host adds a speaker by email
         mvc.perform(post("/api/v1/meetings/" + id + "/members")
                         .header("Authorization", "Bearer " + hostToken)
                         .contentType(APPLICATION_JSON).content("""
@@ -65,7 +65,7 @@ class MemberApiIT {
                 .andReturn().getResponse().getContentAsString();
         String memberId = read(list, "$[0].id");
 
-        // không phải host → 403
+        // not the host → 403
         mvc.perform(post("/api/v1/meetings/" + id + "/members")
                         .header("Authorization", "Bearer " + otherToken)
                         .contentType(APPLICATION_JSON).content("""
@@ -73,7 +73,7 @@ class MemberApiIT {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("NOT_MEETING_HOST"));
 
-        // xóa member
+        // remove the member
         mvc.perform(delete("/api/v1/meetings/" + id + "/members/" + memberId)
                         .header("Authorization", "Bearer " + hostToken))
                 .andExpect(status().isNoContent());
@@ -83,12 +83,34 @@ class MemberApiIT {
     }
 
     @Test
+    void invitingSameEmailTwiceIsConflictNotServerError() throws Exception {
+        String id = read(mvc.perform(post("/api/v1/meetings")
+                        .header("Authorization", "Bearer " + hostToken)
+                        .contentType(APPLICATION_JSON).content("""
+                                {"title":"Dup"}"""))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        mvc.perform(post("/api/v1/meetings/" + id + "/members")
+                        .header("Authorization", "Bearer " + hostToken)
+                        .contentType(APPLICATION_JSON).content("""
+                                {"email":"trung@x.vn","role":"SPEAKER"}"""))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/v1/meetings/" + id + "/members")
+                        .header("Authorization", "Bearer " + hostToken)
+                        .contentType(APPLICATION_JSON).content("""
+                                {"email":"trung@x.vn","role":"ATTENDEE"}"""))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("MEMBER_ALREADY_ADDED"));
+    }
+
+    @Test
     void hostCannotDeleteMemberOfAnotherMeeting() throws Exception {
-        // phòng của host này + 1 thành viên
+        // this host's meeting plus one member
         String mine = mvc.perform(post("/api/v1/meetings")
                         .header("Authorization", "Bearer " + hostToken)
                         .contentType(APPLICATION_JSON).content("""
-                                {"title":"Phòng của tôi"}"""))
+                                {"title":"My meeting"}"""))
                 .andReturn().getResponse().getContentAsString();
         String mineId = read(mine, "$.id");
         String memberId = read(mvc.perform(post("/api/v1/meetings/" + mineId + "/members")
@@ -97,21 +119,21 @@ class MemberApiIT {
                                 {"email":"diengia@x.vn","role":"SPEAKER"}"""))
                 .andReturn().getResponse().getContentAsString(), "$.id");
 
-        // phòng của người khác — họ là host hợp lệ của phòng mình
+        // somebody else's meeting — they are a legitimate host of their own room
         String theirs = mvc.perform(post("/api/v1/meetings")
                         .header("Authorization", "Bearer " + otherToken)
                         .contentType(APPLICATION_JSON).content("""
-                                {"title":"Phòng của họ"}"""))
+                                {"title":"Their meeting"}"""))
                 .andReturn().getResponse().getContentAsString();
         String theirsId = read(theirs, "$.id");
 
-        // mượn đường dẫn phòng mình để xoá thành viên phòng khác → phải 404
+        // borrowing their own meeting path to delete another meeting's member → must be 404
         mvc.perform(delete("/api/v1/meetings/" + theirsId + "/members/" + memberId)
                         .header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PARTICIPANT_NOT_FOUND"));
 
-        // thành viên phòng gốc còn nguyên
+        // the original meeting's member is untouched
         mvc.perform(get("/api/v1/meetings/" + mineId + "/members")
                         .header("Authorization", "Bearer " + hostToken))
                 .andExpect(jsonPath("$.length()").value(1));

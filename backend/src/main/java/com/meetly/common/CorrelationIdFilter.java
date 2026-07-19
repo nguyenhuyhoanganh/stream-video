@@ -14,9 +14,9 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Correlation-id xuyên suốt request (spec 4.1 + 6.4): nhận từ Ingress qua header
- * X-Request-Id, sinh mới nếu thiếu, đẩy vào MDC để logback JSON ghi kèm mọi dòng log,
- * và trả lại client qua response header để đối chiếu khi có sự cố.
+ * Request-wide correlation id (spec 4.1 + 6.4): taken from the Ingress via the
+ * X-Request-Id header, generated when absent, put into the MDC so the JSON logger
+ * stamps every line with it, and echoed back so clients can quote it in incidents.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -36,7 +36,7 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         try {
             chain.doFilter(req, res);
         } finally {
-            MDC.remove(MDC_KEY);   // thread pool tái sử dụng → phải dọn
+            MDC.remove(MDC_KEY);   // threads are pooled and reused, so this must be cleared
         }
     }
 }

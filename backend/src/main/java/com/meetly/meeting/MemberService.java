@@ -19,14 +19,14 @@ public class MemberService {
     private final MeetingMemberRepository members;
     private final UserRepository users;
 
-    /** HOST nếu là chủ phòng; role member nếu có trong meeting_members; empty nếu người lạ. */
+    /** HOST when they own the room; the member role when listed in meeting_members; empty otherwise. */
     @Transactional
     public Optional<MeetingRole> resolveRole(Meeting meeting, UUID userId, String email) {
         if (meeting.getHostId().equals(userId)) return Optional.of(MeetingRole.HOST);
         Optional<MeetingMember> byUser = members.findByMeetingIdAndUserId(meeting.getId(), userId);
         if (byUser.isPresent()) return byUser.map(MeetingMember::getRole);
         Optional<MeetingMember> byEmail = members.findByMeetingIdAndInvitedEmail(meeting.getId(), email);
-        byEmail.ifPresent(mm -> mm.setUserId(userId)); // backfill lần đầu join
+        byEmail.ifPresent(mm -> mm.setUserId(userId)); // backfill on first join
         return byEmail.map(MeetingMember::getRole);
     }
 
@@ -37,10 +37,21 @@ public class MemberService {
             throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED,
                     "Cannot assign the HOST role to a member");
         }
+        // duplicate invite used to insert a second row and break unique (meeting_id,user_id) → 500
+        if (members.findByMeetingIdAndInvitedEmail(m.getId(), email).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, ErrorCode.MEMBER_ALREADY_ADDED,
+                    "This email is already a member of the meeting");
+        }
         MeetingMember mm = new MeetingMember();
         mm.setMeetingId(m.getId());
         mm.setInvitedEmail(email);
-        users.findByEmail(email).ifPresent(u -> mm.setUserId(u.getId()));
+        users.findByEmail(email).ifPresent(u -> {
+            if (members.findByMeetingIdAndUserId(m.getId(), u.getId()).isPresent()) {
+                throw new ApiException(HttpStatus.CONFLICT, ErrorCode.MEMBER_ALREADY_ADDED,
+                        "This user is already a member of the meeting");
+            }
+            mm.setUserId(u.getId());
+        });
         mm.setRole(role != null ? role : MeetingRole.ATTENDEE);
         mm.setInvitedBy(actorId);
         return members.save(mm);
@@ -55,8 +66,8 @@ public class MemberService {
     @Transactional
     public void remove(UUID meetingId, UUID actorId, UUID memberId) {
         requireHost(meetingId, actorId);
-        // memberId phải thuộc đúng phòng này: thiếu kiểm tra thì host phòng A
-        // xoá được thành viên phòng B chỉ bằng cách đổi meetingId trên URL
+        // memberId must belong to this meeting: without the check, the host of meeting A
+        // could delete a member of meeting B just by changing meetingId in the URL
         MeetingMember mm = members.findById(memberId)
                 .filter(m -> m.getMeetingId().equals(meetingId))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,

@@ -14,7 +14,7 @@ type Props = {
 export function ChatPanel({ meetingId, role, registerRaiseHand }: Props) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const chatToken = useRoomStore((s) => s.join?.chatToken ?? null);
-  // guest dùng chatToken scoped theo phòng; member dùng access token sẵn có
+  // guests use the meeting-scoped chatToken; members reuse their access token
   const token = chatToken ?? accessToken;
   const { messages, connected, send, removeLocal } = useChatSocket(meetingId, token);
   const [draft, setDraft] = useState('');

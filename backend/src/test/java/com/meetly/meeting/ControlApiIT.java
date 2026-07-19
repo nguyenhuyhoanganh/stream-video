@@ -70,7 +70,7 @@ class ControlApiIT {
                 .andExpect(status().isNoContent());
         verify(roomControl).setRole(eq(code), eq(otherId), eq(MeetingRole.SPEAKER));
 
-        // join lại → SPEAKER (đã upsert meeting_members)
+        // re-join → SPEAKER (meeting_members was upserted)
         mvc.perform(post("/api/v1/meetings/" + code + "/join")
                         .header("Authorization", "Bearer " + otherToken))
                 .andExpect(jsonPath("$.role").value("SPEAKER"));

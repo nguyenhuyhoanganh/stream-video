@@ -25,7 +25,7 @@ public class StorageService {
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(props.accessKey(), props.secretKey())))
                 .serviceConfiguration(S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)   // bắt buộc cho MinIO
+                        .pathStyleAccessEnabled(true)   // required by MinIO
                         .build())
                 .build();
     }

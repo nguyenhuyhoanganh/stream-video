@@ -18,8 +18,8 @@ spec:
           - path: /ws
             pathType: Prefix
             backend: { service: { name: meetly-api, port: { number: 80 } } }
-          # /actuator KHÔNG expose ra ingress: probes gọi thẳng pod,
-          # Prometheus scrape qua ServiceMonitor nội bộ (Task 7)
+          # /actuator is NOT exposed through the ingress: probes hit the pod directly
+          # and Prometheus scrapes internally via the ServiceMonitor (Task 7)
           - path: /
             pathType: Prefix
             backend: { service: { name: meetly-web, port: { number: 80 } } }

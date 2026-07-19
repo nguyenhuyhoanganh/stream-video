@@ -3,7 +3,7 @@ replicaCount: 2
 egress:
   redis:
     address: "CHANGEME-redis-host:6379"
-  # api_key/api_secret inject khi install (trùng key của livekit server)
+  # api_key/api_secret injected at install time (same key as the livekit server)
   prometheus_port: 6790
 
 nodeSelector:

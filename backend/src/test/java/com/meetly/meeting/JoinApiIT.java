@@ -62,7 +62,7 @@ class JoinApiIT {
         String code = createMeeting(hostToken, """
                 {"title":"Now meeting","roomType":"WEBINAR"}""");
 
-        // host join → HOST, token có roomAdmin
+        // host joins → HOST, token carries roomAdmin
         String hostJoin = mvc.perform(post("/api/v1/meetings/" + code + "/join")
                         .header("Authorization", "Bearer " + hostToken))
                 .andExpect(status().isOk())
@@ -75,7 +75,7 @@ class JoinApiIT {
         assertThat(hostVideo.get("roomAdmin")).isEqualTo(true);
         assertThat(hostVideo.get("canPublish")).isEqualTo(true);
 
-        // người lạ join WEBINAR → ATTENDEE, không publish được
+        // a stranger joining a WEBINAR → ATTENDEE, cannot publish
         String guestJoin = mvc.perform(post("/api/v1/meetings/" + code + "/join")
                         .header("Authorization", "Bearer " + guestToken))
                 .andExpect(status().isOk())
@@ -86,6 +86,25 @@ class JoinApiIT {
         assertThat(guestVideo.get("roomAdmin")).isNull();
         assertThat(guestVideo.get("canPublish")).isEqualTo(false);
         assertThat(guestVideo.get("canPublishData")).isEqualTo(false);
+    }
+
+    /**
+     * A meeting that overran its slot: the "scheduled_end_at + 2h" TTL has already passed,
+     * so the issued token would be dead on arrival and the user just sees a failed connection.
+     */
+    @Test
+    void tokenForOverdueMeetingIsStillValid() throws Exception {
+        String code = createMeeting(hostToken, """
+                {"title":"Overdue","scheduledStartAt":"2020-01-01T00:00:00Z",
+                 "scheduledEndAt":"2020-01-01T01:00:00Z","roomType":"WEBINAR"}""");
+
+        String res = mvc.perform(post("/api/v1/meetings/" + code + "/join")
+                        .header("Authorization", "Bearer " + guestToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        var exp = parseLivekit(read(res, "$.livekitToken")).getExpiration().toInstant();
+        assertThat(exp).isAfter(java.time.Instant.now());
     }
 
     @Test

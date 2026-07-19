@@ -36,8 +36,8 @@ api.interceptors.response.use(
       refreshing ??= refreshAccessToken().finally(() => (refreshing = null));
       const token = await refreshing;
       if (token) return api(config);
-      // Khách (guest) không có tài khoản để đăng nhập lại — đá họ về /login là
-      // đẩy ra khỏi phòng họp. Chỉ chuyển hướng người đã đăng nhập.
+      // Guests have no account to sign back in with, so bouncing them to /login just
+      // throws them out of the meeting. Only redirect users who were signed in.
       const wasLoggedIn = useAuthStore.getState().user !== null;
       useAuthStore.getState().clear();
       if (wasLoggedIn) window.location.assign('/login');
@@ -46,7 +46,7 @@ api.interceptors.response.use(
   },
 );
 
-/** Gọi 1 lần lúc app load để khôi phục session từ refresh cookie. */
+/** Called once at app load to restore the session from the refresh cookie. */
 export async function bootstrapAuth(): Promise<void> {
   await refreshAccessToken();
   useAuthStore.getState().setReady();

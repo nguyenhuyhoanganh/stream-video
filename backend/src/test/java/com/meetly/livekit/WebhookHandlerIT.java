@@ -75,8 +75,8 @@ class WebhookHandlerIT {
     }
 
     /**
-     * Host được vào phòng bất cứ lúc nào để thử trước. Nếu buổi thử đó (phòng đóng
-     * trước giờ hẹn) đánh dấu ENDED thì cuộc họp ngày mai không ai vào được nữa.
+     * The host may open the room any time to test it. If that dry run (room closing
+     * before the scheduled start) marked it ENDED, tomorrow's meeting would be unjoinable.
      */
     @Test
     void earlyTestSessionDoesNotKillFutureMeeting() {

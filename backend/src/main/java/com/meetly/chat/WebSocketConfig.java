@@ -17,8 +17,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // giới hạn origin thay vì "*": handshake WS không bị SOP chặn nên đây là
-        // lớp chặn duy nhất trước bước CONNECT (auth token) — xem spec 6.5
+        // restrict origins instead of "*": the WS handshake is not covered by SOP, so this
+        // is the only gate before CONNECT does token auth — see spec 6.5
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(corsProperties.allowedOrigins().toArray(String[]::new));
     }

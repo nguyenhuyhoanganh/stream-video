@@ -11,7 +11,7 @@ export type CreateMeetingInput = {
 };
 
 export type MemberDto = { id: string; email: string | null; role: 'SPEAKER' | 'ATTENDEE' };
-// email null = member được promote ngay trong phòng (chỉ có userId)
+// a null email means the member was promoted in-room and only has a userId
 
 export function useMembers(meetingId: string | null) {
   return useQuery({

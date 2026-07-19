@@ -31,12 +31,12 @@ class AuthApiIT {
                 .andExpect(jsonPath("$.user.email").value("anh@meetly.dev"))
                 .andExpect(cookie().httpOnly("meetly_refresh", true));
 
-        // email trùng → 409 EMAIL_TAKEN
+        // duplicate email → 409 EMAIL_TAKEN
         mvc.perform(post("/api/v1/auth/register").contentType(APPLICATION_JSON).content(ANH))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
 
-        // login đúng
+        // correct login
         mvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON)
                         .content("""
                                 {"email":"anh@meetly.dev","password":"secret123"}"""))
@@ -50,7 +50,7 @@ class AuthApiIT {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
 
-        // body thiếu email → 400 VALIDATION_FAILED
+        // body without email → 400 VALIDATION_FAILED
         mvc.perform(post("/api/v1/auth/register").contentType(APPLICATION_JSON)
                         .content("""
                                 {"password":"secret123"}"""))

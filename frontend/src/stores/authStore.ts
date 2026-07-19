@@ -4,7 +4,7 @@ import type { User } from '../api/types';
 type AuthState = {
   user: User | null;
   accessToken: string | null;
-  /** true sau khi bootstrapAuth chạy xong (dù thành công hay không) */
+  /** true once bootstrapAuth has finished, whether or not it succeeded */
   ready: boolean;
   setAuth: (user: User, accessToken: string) => void;
   setReady: () => void;

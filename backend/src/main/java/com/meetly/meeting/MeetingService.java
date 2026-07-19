@@ -127,10 +127,18 @@ public class MeetingService {
         }
     }
 
+    /**
+     * The spec sets token TTL to "scheduled_end_at + 2h". For a meeting that overruns or
+     * starts late that moment may already have passed, and join would answer 200 with a
+     * dead token, leaving the user with an unexplained connection failure. Keep a floor
+     * of one hour from issue time.
+     */
     Instant tokenExpiry(Meeting m) {
-        return (m.getScheduledEndAt() != null
+        Instant perSchedule = (m.getScheduledEndAt() != null
                 ? m.getScheduledEndAt() : Instant.now().plus(4, ChronoUnit.HOURS))
                 .plus(2, ChronoUnit.HOURS);
+        Instant floor = Instant.now().plus(1, ChronoUnit.HOURS);
+        return perSchedule.isAfter(floor) ? perSchedule : floor;
     }
 
     private Meeting requireHost(UUID meetingId, UUID actorId) {

@@ -31,9 +31,9 @@ public class SecurityConfig {
     }
 
     /**
-     * Prod FE và BE chung origin (ingress route /api) nên CORS gần như không kích hoạt;
-     * cấu hình vẫn cần cho trường hợp FE deploy khác domain, và để
-     * meetly.cors.allowed-origins là config sống chứ không phải khai báo suông.
+     * In production the SPA and API share an origin (ingress routes /api), so CORS rarely
+     * kicks in; the config still matters when the SPA is served from another domain, and it
+     * keeps meetly.cors.allowed-origins a live setting rather than a dead declaration.
      */
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
@@ -53,8 +53,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // /actuator không expose qua ingress — probes gọi thẳng pod,
-                // Prometheus scrape nội bộ qua ServiceMonitor
+                // /actuator is not exposed through the ingress — probes hit the pod directly
+                // and Prometheus scrapes internally via the ServiceMonitor
                 .requestMatchers("/api/v1/auth/**", "/actuator/health", "/actuator/health/**",
                         "/actuator/prometheus",
                         "/v3/api-docs/**", "/swagger-ui/**").permitAll()

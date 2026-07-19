@@ -71,7 +71,7 @@ export function RoomLayout({ meetingId, role }: Props) {
           </div>
         </aside>
       </div>
-      {/* raise hand do ChatPanel thực thi (gửi message RAISE_HAND) */}
+      {/* ChatPanel performs the raise-hand action by sending a RAISE_HAND message */}
       <ControlBar meetingId={meetingId} role={role} onRaiseHand={() => raiseHandRef.current?.()}
                   onEnd={role === 'HOST' ? () => end.mutate() : undefined} />
       <RoomAudioRenderer />

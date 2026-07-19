@@ -5,9 +5,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.util.List;
 
 /**
- * Origin được phép gọi REST và mở WebSocket (spec 6.5).
- * Bắt buộc có giá trị: thiếu nó thì WS sẽ từ chối mọi origin một cách âm thầm,
- * nên fail ngay lúc khởi động thay vì để phòng họp không vào được trên production.
+ * Origins allowed to call the REST API and open a WebSocket (spec 6.5).
+ * Required: without it the WebSocket endpoint silently rejects every origin, so we
+ * fail at startup rather than ship a build where nobody can join a meeting.
  */
 @ConfigurationProperties(prefix = "meetly.cors")
 public record CorsProperties(List<String> allowedOrigins) {

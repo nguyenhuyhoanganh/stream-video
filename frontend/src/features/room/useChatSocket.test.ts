@@ -8,7 +8,7 @@ const msg = (id: string, at: string): ChatMessageDto => ({
 });
 
 describe('mergeMessages', () => {
-  it('gộp không trùng id, sort theo createdAt', () => {
+  it('merges without duplicating ids and sorts by createdAt', () => {
     const current = [msg('a', '2026-07-18T10:00:00Z'), msg('b', '2026-07-18T10:01:00Z')];
     const incoming = [msg('b', '2026-07-18T10:01:00Z'), msg('c', '2026-07-18T10:00:30Z')];
     const out = mergeMessages(current, incoming);

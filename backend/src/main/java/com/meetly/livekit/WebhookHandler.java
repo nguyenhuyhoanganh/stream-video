@@ -28,8 +28,8 @@ public class WebhookHandler {
             log.debug("Duplicate webhook event {} ignored", event.getId());
             return;
         }
-        // egress events xử lý theo egressId, không cần meeting lookup
-        // (có thể đến sau khi room đã đóng)
+        // egress events are keyed by egressId and need no meeting lookup
+        // (they can arrive after the room has already closed)
         if (event.getEvent().startsWith("egress_")) {
             handleEgress(event);
             return;
@@ -47,11 +47,11 @@ public class WebhookHandler {
                 }
             }
             case "room_finished" -> {
-                // Host được vào sớm tùy ý (validateJoinable bỏ qua giới hạn 15 phút cho host).
-                // Nếu phòng đóng TRƯỚC giờ hẹn thì đó là buổi vào thử, không phải buổi họp đã
-                // diễn ra — đánh ENDED sẽ giết luôn cuộc họp chưa kịp bắt đầu.
-                boolean daToiGioHop = !Instant.now().isBefore(meeting.getScheduledStartAt());
-                meeting.setStatus(daToiGioHop ? MeetingStatus.ENDED : MeetingStatus.SCHEDULED);
+                // The host may join at any time (validateJoinable waives the 15-minute rule for them).
+                // A room closing BEFORE the scheduled start is a dry run, not a meeting that took
+                // place — marking it ENDED would kill a meeting that never started.
+                boolean startTimeReached = !Instant.now().isBefore(meeting.getScheduledStartAt());
+                meeting.setStatus(startTimeReached ? MeetingStatus.ENDED : MeetingStatus.SCHEDULED);
                 sessions.findByMeetingIdAndLeftAtIsNull(meeting.getId())
                         .forEach(s -> s.setLeftAt(Instant.now()));
             }

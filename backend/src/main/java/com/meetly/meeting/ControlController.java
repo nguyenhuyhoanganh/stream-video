@@ -67,12 +67,12 @@ public class ControlController {
     private void changeRole(AuthenticatedUser user, UUID meetingId, String identity,
                             MeetingRole newRole) {
         Meeting m = requireHost(meetingId, user.id());
-        // identity của user đăng nhập = userId; guest (guest:*) không promote được
+        // a signed-in user's identity is their userId; guests (guest:*) cannot be promoted
         if (!identity.startsWith("guest:")) {
             UUID targetUserId = parseUserIdentity(identity);
             MeetingMember mm = members.findByMeetingIdAndUserId(meetingId, targetUserId)
                     .orElseGet(() -> {
-                        // CHECK constraint là (user_id OR invited_email) — có userId là đủ
+                        // the CHECK constraint is (user_id OR invited_email), so a userId alone is enough
                         MeetingMember fresh = new MeetingMember();
                         fresh.setMeetingId(meetingId);
                         fresh.setUserId(targetUserId);
@@ -85,7 +85,7 @@ public class ControlController {
         roomControl.setRole(m.getCode(), identity, newRole);
     }
 
-    /** identity rác từ client là lỗi 400, không phải 500. */
+    /** A garbage identity from the client is a 400, not a 500. */
     private UUID parseUserIdentity(String identity) {
         try {
             return UUID.fromString(identity);

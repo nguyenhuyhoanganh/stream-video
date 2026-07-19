@@ -28,7 +28,7 @@ class LiveKitTokenServiceTest {
 
     @Test
     void attendeeCannotPublish() {
-        String jwt = service.createToken("abc-defg-hij", "guest:123", "Khách",
+        String jwt = service.createToken("abc-defg-hij", "guest:123", "Guest",
                 com.meetly.meeting.MeetingRole.ATTENDEE, Instant.now().plus(2, ChronoUnit.HOURS));
         Map<String, Object> video = parse(jwt);
         assertThat(video.get("canPublish")).isEqualTo(false);

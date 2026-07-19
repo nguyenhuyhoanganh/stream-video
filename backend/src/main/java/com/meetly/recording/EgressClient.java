@@ -18,13 +18,13 @@ public class EgressClient {
         this.storage = storage;
     }
 
-    /** Bắt đầu ghi RoomComposite → MP4 → S3. Trả về egressId. */
+    /** Starts a RoomComposite recording → MP4 → S3. Returns the egressId. */
     public String startRoomComposite(String roomCode, String s3Key) {
         LivekitEgress.EncodedFileOutput output = LivekitEgress.EncodedFileOutput.newBuilder()
                 .setFileType(LivekitEgress.EncodedFileType.MP4)
                 .setFilepath(s3Key)
                 .setS3(LivekitEgress.S3Upload.newBuilder()
-                        // endpoint theo GÓC NHÌN CONTAINER EGRESS, không phải BE
+                        // endpoint as seen FROM THE EGRESS CONTAINER, not from the API
                         .setEndpoint(storage.uploadEndpoint())
                         .setAccessKey(storage.accessKey())
                         .setSecret(storage.secretKey())

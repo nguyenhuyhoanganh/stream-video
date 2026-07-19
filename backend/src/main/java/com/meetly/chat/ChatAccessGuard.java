@@ -22,9 +22,9 @@ public class ChatAccessGuard {
     private final MemberService memberService;
 
     /**
-     * Quyền chat của một principal với một meeting — dùng cho SUBSCRIBE, gửi tin, đọc history.
-     * Guest: chỉ phòng trong token. User: host/member, hoặc phòng WEBINAR (mở).
-     * @throws ApiException 404 nếu meeting không tồn tại; 403 nếu không có quyền.
+     * Chat permission of a principal for a meeting — used by SUBSCRIBE, sending and history.
+     * Guest: only the meeting in its token. User: host/member, or any WEBINAR (open) room.
+     * @throws ApiException 404 when the meeting does not exist; 403 when access is denied.
      */
     @Transactional
     public Meeting check(Object principal, UUID meetingId) {

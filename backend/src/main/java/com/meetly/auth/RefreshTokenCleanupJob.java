@@ -9,12 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 
 /**
- * Mỗi lần đăng nhập hoặc refresh đều sinh thêm một dòng refresh_tokens; không dọn thì
- * bảng phình vô hạn theo thời gian sống của hệ thống. Chỉ xoá dòng đã hết hạn — dòng
- * bị thu hồi nhưng chưa hết hạn phải giữ để AuthService.rotate còn phát hiện được
- * việc token bị dùng lại.
+ * Every sign-in and refresh inserts a refresh_tokens row; without a purge the table
+ * grows without bound. Only expired rows are deleted — a revoked row that has not
+ * expired yet must stay so AuthService.rotate can still detect that the token was
+ * replayed.
  *
- * Nhiều pod cùng chạy job này là vô hại: DELETE theo điều kiện, idempotent.
+ * Several pods running this job concurrently is harmless: a conditional, idempotent DELETE.
  */
 @Slf4j
 @Component
@@ -22,10 +22,10 @@ import java.time.Instant;
 public class RefreshTokenCleanupJob {
     private final RefreshTokenRepository refreshTokens;
 
-    @Scheduled(cron = "0 30 3 * * *")   // 03:30 hằng ngày, giờ thấp điểm
+    @Scheduled(cron = "0 30 3 * * *")   // 03:30 daily, off-peak
     @Transactional
     public void purgeExpired() {
         int removed = refreshTokens.deleteByExpiresAtBefore(Instant.now());
-        if (removed > 0) log.info("Đã dọn {} refresh token hết hạn", removed);
+        if (removed > 0) log.info("Purged {} expired refresh tokens", removed);
     }
 }

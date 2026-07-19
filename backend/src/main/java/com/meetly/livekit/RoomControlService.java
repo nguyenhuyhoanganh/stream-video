@@ -17,7 +17,7 @@ public class RoomControlService {
         this.client = RoomServiceClient.createClient(props.httpUrl(), props.apiKey(), props.apiSecret());
     }
 
-    /** Mute mọi audio track đang publish của participant. */
+    /** Mutes every audio track the participant is currently publishing. */
     public void muteAllAudio(String room, String identity) {
         try {
             LivekitModels.ParticipantInfo info =
@@ -33,7 +33,7 @@ public class RoomControlService {
         }
     }
 
-    /** Cấp lại grants runtime: SPEAKER → canPublish, ATTENDEE → không. */
+    /** Re-issues grants at runtime: SPEAKER → canPublish, ATTENDEE → no publishing. */
     public void setRole(String room, String identity, MeetingRole role) {
         try {
             LivekitModels.ParticipantPermission permission =

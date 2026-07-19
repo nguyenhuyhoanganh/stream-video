@@ -18,8 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Input hỏng từ client phải là 4xx, không phải 5xx: 5xx sai hợp đồng API (spec 4.8)
- * và làm alert MeetlyApiHigh5xxRate báo động giả mỗi khi có bot quét lung tung.
+ * Malformed client input must be 4xx, never 5xx: a 5xx breaks the API contract (spec 4.8)
+ * and makes MeetlyApiHigh5xxRate page the on-call every time a bot scans the API.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -48,7 +48,7 @@ class ClientErrorStatusIT {
 
     @Test
     void malformedJsonBodyIsBadRequest() throws Exception {
-        mvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON).content("{hỏng"))
+        mvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON).content("{broken"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }

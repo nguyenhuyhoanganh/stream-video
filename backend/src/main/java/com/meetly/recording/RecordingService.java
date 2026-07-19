@@ -5,6 +5,7 @@ import com.meetly.common.ErrorCode;
 import com.meetly.meeting.Meeting;
 import com.meetly.meeting.MeetingRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecordingService {
@@ -35,6 +37,7 @@ public class RecordingService {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.RECORDING_NOT_ALLOWED,
                     "Recording is not allowed for this meeting");
         }
+        failStaleRecordings(meetingId);
         if (recordings.existsByMeetingIdAndStatusIn(meetingId,
                 List.of(RecordingStatus.STARTING, RecordingStatus.ACTIVE))) {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.RECORDING_ALREADY_ACTIVE,
@@ -65,7 +68,7 @@ public class RecordingService {
     public List<Recording> list(UUID meetingId, UUID actorId) {
         Meeting m = meetings.findById(meetingId).orElseThrow(() -> new ApiException(
                 HttpStatus.NOT_FOUND, ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
-        requireHostOrMember(m, actorId);   // spec 4.6: chỉ host/member của meeting
+        requireHostOrMember(m, actorId);   // spec 4.6: host and members only
         return recordings.findByMeetingIdOrderByStartedAtDesc(meetingId);
     }
 
@@ -75,12 +78,37 @@ public class RecordingService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
                         ErrorCode.RECORDING_NOT_FOUND, "Recording not found"));
         Meeting m = meetings.findById(rec.getMeetingId()).orElseThrow();
-        requireHostOrMember(m, actorId);   // spec 4.6: chỉ host/member của meeting
+        requireHostOrMember(m, actorId);   // spec 4.6: host and members only
         if (rec.getStatus() != RecordingStatus.COMPLETED || rec.getS3Key() == null) {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.RECORDING_NOT_READY,
                     "Recording is not ready yet");
         }
         return storageService.presignGetUrl(rec.getS3Key(), Duration.ofHours(1));
+    }
+
+    /**
+     * STARTING/ACTIVE is only left behind by an egress webhook. If egress dies or the
+     * webhook is lost the recording sticks forever and the host can never record that
+     * room again (always RECORDING_ALREADY_ACTIVE). Fail stale recordings to unblock it.
+     */
+    private void failStaleRecordings(UUID meetingId) {
+        Instant now = Instant.now();
+        recordings.findByMeetingIdOrderByStartedAtDesc(meetingId).stream()
+                .filter(r -> r.getStatus() == RecordingStatus.STARTING
+                        || r.getStatus() == RecordingStatus.ACTIVE)
+                .filter(r -> {
+                    Duration stuckFor = Duration.between(r.getStartedAt(), now);
+                    // egress moves STARTING→ACTIVE within seconds; allow ACTIVE up to 12h
+                    return r.getStatus() == RecordingStatus.STARTING
+                            ? stuckFor.compareTo(Duration.ofMinutes(5)) > 0
+                            : stuckFor.compareTo(Duration.ofHours(12)) > 0;
+                })
+                .forEach(r -> {
+                    log.warn("Recording {} stuck in {} since {} — marking FAILED to unblock recording",
+                            r.getEgressId(), r.getStatus(), r.getStartedAt());
+                    r.setStatus(RecordingStatus.FAILED);
+                    r.setEndedAt(now);
+                });
     }
 
     private void requireHostOrMember(Meeting m, UUID actorId) {

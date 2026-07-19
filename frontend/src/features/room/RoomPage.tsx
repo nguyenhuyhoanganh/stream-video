@@ -29,7 +29,7 @@ export function RoomPage() {
   }, [code]);
 
   if (join.isError) {
-    // map mã lỗi ổn định của BE (spec 4.8) sang thông báo cho người dùng
+    // map the stable backend error codes (spec 4.8) to user-facing copy
     const errCode = isAxiosError(join.error) ? join.error.response?.data?.code : null;
     const detail =
       errCode === 'MEETING_NOT_STARTED' ? 'This meeting has not started yet. Please come back later.'

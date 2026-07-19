@@ -32,12 +32,12 @@ public class ChatRestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant before,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant after,
             @RequestParam(defaultValue = "50") int limit) {
-        accessGuard.check(principal, meetingId);   // cùng luật với SUBSCRIBE/gửi tin
+        accessGuard.check(principal, meetingId);   // same rule as SUBSCRIBE and sending
         List<ChatMessage> page;
         if (after != null) {
             page = chatMessages.findByMeetingIdAndCreatedAtAfterOrderByCreatedAtAsc(meetingId, after);
         } else {
-            // clamp: limit <= 0 làm PageRequest ném IllegalArgumentException → 500
+            // clamp: limit <= 0 makes PageRequest throw IllegalArgumentException → 500
             page = chatMessages.findByMeetingIdAndCreatedAtBeforeOrderByCreatedAtDesc(
                     meetingId, before != null ? before : Instant.now(),
                     PageRequest.of(0, Math.clamp(limit, 1, 200)));

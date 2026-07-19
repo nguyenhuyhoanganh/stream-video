@@ -8,7 +8,7 @@ export function RecordingsPage() {
   const [playing, setPlaying] = useState<string | null>(null);
 
   async function play(recordingId: string) {
-    // presigned URL TTL 1 giờ, chỉ lấy khi người dùng bấm xem
+    // the presigned URL lives one hour, so only fetch it when the user hits play
     setPlaying(await fetchPlaybackUrl(recordingId));
   }
 

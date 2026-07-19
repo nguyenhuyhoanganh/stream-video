@@ -57,6 +57,28 @@ class RecordingApiIT {
         return read(body, "$.accessToken");
     }
 
+    /**
+     * If egress dies or the webhook is lost the recording sticks in STARTING and the host
+     * can never record that room again. Stale recordings must be failed automatically.
+     */
+    @Test
+    void staleStartingRecordingDoesNotBlockNewOne() throws Exception {
+        Recording stuck = new Recording();
+        stuck.setMeetingId(java.util.UUID.fromString(meetingId));
+        stuck.setEgressId("EG_STUCK_" + System.nanoTime());
+        stuck.setStatus(RecordingStatus.STARTING);
+        stuck.setStartedAt(java.time.Instant.now().minus(30, java.time.temporal.ChronoUnit.MINUTES));
+        recordings.save(stuck);
+
+        mvc.perform(post("/api/v1/meetings/" + meetingId + "/recordings/start")
+                        .header("Authorization", "Bearer " + hostToken))
+                .andExpect(status().isCreated());
+
+        org.assertj.core.api.Assertions
+                .assertThat(recordings.findByEgressId(stuck.getEgressId()).orElseThrow().getStatus())
+                .isEqualTo(RecordingStatus.FAILED);
+    }
+
     @Test
     void startStopFlow() throws Exception {
         // start
@@ -66,7 +88,7 @@ class RecordingApiIT {
                 .andExpect(jsonPath("$.status").value("STARTING"))
                 .andReturn().getResponse().getContentAsString();
 
-        // start lần 2 khi đang active → 409
+        // starting a second time while active → 409
         mvc.perform(post("/api/v1/meetings/" + meetingId + "/recordings/start")
                         .header("Authorization", "Bearer " + hostToken))
                 .andExpect(status().isConflict())
@@ -88,14 +110,14 @@ class RecordingApiIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
 
-        // playback khi chưa COMPLETED → 409
+        // playback before COMPLETED → 409
         String recId = read(started, "$.id");
         mvc.perform(get("/api/v1/recordings/" + recId + "/playback-url")
                         .header("Authorization", "Bearer " + hostToken))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("RECORDING_NOT_READY"));
 
-        // giả lập webhook đã hoàn tất → playback OK
+        // simulate the completion webhook → playback works
         Recording rec = recordings.findById(java.util.UUID.fromString(recId)).orElseThrow();
         rec.setStatus(RecordingStatus.COMPLETED);
         rec.setS3Key("recordings/" + code + "/x.mp4");
@@ -105,7 +127,7 @@ class RecordingApiIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.url").isNotEmpty());
 
-        // người ngoài meeting xem playback → 403 (spec 4.6)
+        // somebody outside the meeting requesting playback → 403 (spec 4.6)
         mvc.perform(get("/api/v1/recordings/" + recId + "/playback-url")
                         .header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isForbidden())

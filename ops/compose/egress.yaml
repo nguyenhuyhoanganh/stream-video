@@ -1,7 +1,7 @@
 api_key: devkey
 api_secret: meetly_dev_secret_0123456789abcdef
-# egress chạy network_mode: host — nhìn LiveKit/Redis qua cổng publish trên host
-# (livekit --node-ip 127.0.0.1 quảng bá ICE 127.0.0.1, container thường không với tới)
+# egress runs with network_mode: host and reaches LiveKit/Redis via published ports
+# (livekit --node-ip 127.0.0.1 advertises ICE 127.0.0.1, unreachable from a bridge container)
 ws_url: ws://localhost:7880
 redis:
   address: localhost:6379

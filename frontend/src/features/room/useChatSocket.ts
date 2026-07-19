@@ -41,7 +41,7 @@ export function useChatSocket(meetingId: string, token: string | null) {
             setMessages((cur) => cur.filter((m) => m.id !== event.messageId));
           }
         });
-        // bù tin nhắn bị lỡ (lần đầu: 50 tin gần nhất)
+        // backfill missed messages (first connect: the 50 most recent)
         const params = lastCreatedAtRef.current
           ? { after: lastCreatedAtRef.current } : { limit: 50 };
         void api

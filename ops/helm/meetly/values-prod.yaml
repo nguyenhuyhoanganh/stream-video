@@ -1,1 +1,1 @@
-# Prod dùng values.yaml mặc định. Override tại đây khi cần (vd tăng maxReplicas).
+# Production uses the defaults in values.yaml. Override here when needed (e.g. maxReplicas).
