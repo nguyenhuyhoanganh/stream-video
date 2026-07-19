@@ -24,6 +24,7 @@ public class MeetingService {
     private final LiveKitTokenService liveKitTokenService;
     private final UserRepository users;
     private final MemberService memberService;
+    private final com.meetly.auth.JwtService jwtService;
 
     @Transactional
     public Meeting create(UUID hostId, CreateMeetingRequest req) {
@@ -89,7 +90,29 @@ public class MeetingService {
         validateJoinable(m, role == MeetingRole.HOST);
         String token = liveKitTokenService.createToken(
                 m.getCode(), userId.toString(), user.getFullName(), role, tokenExpiry(m));
-        return new MeetingDtos.JoinResponse(liveKitTokenService.wsUrl(), token, role.name());
+        return new MeetingDtos.JoinResponse(m.getId(), liveKitTokenService.wsUrl(), token,
+                role.name(), null);
+    }
+
+    @Transactional(readOnly = true)
+    public MeetingDtos.JoinResponse joinAsGuest(String code, String displayName) {
+        Meeting m = getByCode(code);
+        if (displayName == null || displayName.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.DISPLAY_NAME_REQUIRED,
+                    "Vui lòng nhập tên hiển thị");
+        }
+        if (m.getRoomType() != RoomType.WEBINAR) {
+            throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.GUEST_MEETING_FORBIDDEN,
+                    "Phòng họp này yêu cầu đăng nhập");
+        }
+        validateJoinable(m, false);
+        String identity = "guest:" + UUID.randomUUID();
+        Instant expiresAt = tokenExpiry(m);
+        String lkToken = liveKitTokenService.createToken(
+                m.getCode(), identity, displayName, MeetingRole.ATTENDEE, expiresAt);
+        String chatToken = jwtService.generateGuestToken(m.getId(), identity, displayName, expiresAt);
+        return new MeetingDtos.JoinResponse(m.getId(), liveKitTokenService.wsUrl(), lkToken,
+                MeetingRole.ATTENDEE.name(), chatToken);
     }
 
     void validateJoinable(Meeting m, boolean isHost) {

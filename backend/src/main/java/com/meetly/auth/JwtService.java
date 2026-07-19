@@ -41,4 +41,28 @@ public class JwtService {
                 .parseSignedClaims(token).getPayload();
         return new AccessTokenClaims(UUID.fromString(c.getSubject()), c.get("email", String.class));
     }
+
+    public String generateGuestToken(UUID meetingId, String identity, String displayName,
+                                     Instant expiresAt) {
+        return Jwts.builder()
+                .subject(identity)
+                .claim("typ", "guest")
+                .claim("mtg", meetingId.toString())
+                .claim("name", displayName)
+                .issuedAt(new Date())
+                .expiration(Date.from(expiresAt))
+                .signWith(key)
+                .compact();
+    }
+
+    /** Trả AuthenticatedUser (access token) hoặc GuestUser (guest token). */
+    public Object parsePrincipal(String token) {
+        Claims c = Jwts.parser().verifyWith(key).build()
+                .parseSignedClaims(token).getPayload();
+        if ("guest".equals(c.get("typ", String.class))) {
+            return new GuestUser(c.getSubject(), c.get("name", String.class),
+                    UUID.fromString(c.get("mtg", String.class)));
+        }
+        return new AuthenticatedUser(UUID.fromString(c.getSubject()), c.get("email", String.class));
+    }
 }

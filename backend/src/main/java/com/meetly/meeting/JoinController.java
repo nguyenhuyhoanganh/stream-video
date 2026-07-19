@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,7 +18,9 @@ public class JoinController {
 
     @PostMapping("/{code}/join")
     public JoinResponse join(@AuthenticationPrincipal AuthenticatedUser user,
-                             @PathVariable String code) {
-        return meetingService.join(code, user.id());
+                             @PathVariable String code,
+                             @RequestBody(required = false) MeetingDtos.JoinRequest body) {
+        if (user != null) return meetingService.join(code, user.id());
+        return meetingService.joinAsGuest(code, body != null ? body.displayName() : null);
     }
 }

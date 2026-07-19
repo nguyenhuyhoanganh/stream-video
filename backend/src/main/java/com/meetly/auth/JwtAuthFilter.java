@@ -26,10 +26,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String header = req.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             try {
-                JwtService.AccessTokenClaims claims = jwtService.parse(header.substring(7));
-                var principal = new AuthenticatedUser(claims.userId(), claims.email());
+                Object principal = jwtService.parsePrincipal(header.substring(7));
+                String role = principal instanceof GuestUser ? "ROLE_GUEST" : "ROLE_USER";
                 var auth = new UsernamePasswordAuthenticationToken(
-                        principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                        principal, null, List.of(new SimpleGrantedAuthority(role)));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             } catch (JwtException | IllegalArgumentException ignored) {
                 // token hỏng → đi tiếp không auth; entry point trả 401 nếu route cần auth

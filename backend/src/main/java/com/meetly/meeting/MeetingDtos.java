@@ -22,7 +22,10 @@ public class MeetingDtos {
                                        Instant scheduledStartAt,
                                        Instant scheduledEndAt) {}
 
-    public record JoinResponse(String livekitUrl, String livekitToken, String role) {}
+    public record JoinRequest(String displayName) {}
+
+    public record JoinResponse(UUID meetingId, String livekitUrl, String livekitToken,
+                               String role, String chatToken) {}
 
     public record MeetingResponse(UUID id, String code, String title, String description,
                                   UUID hostId, Instant scheduledStartAt, Instant scheduledEndAt,
