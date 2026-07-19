@@ -17,6 +17,7 @@ import java.time.Instant;
 public class WebhookHandler {
     private final MeetingRepository meetings;
     private final ParticipantSessionRepository sessions;
+    private final com.meetly.recording.RecordingRepository recordings;
     private final StringRedisTemplate redis;
 
     @Transactional
@@ -25,6 +26,12 @@ public class WebhookHandler {
                 .setIfAbsent("webhook:evt:" + event.getId(), "1", Duration.ofHours(24));
         if (Boolean.FALSE.equals(first)) {
             log.debug("Duplicate webhook event {} ignored", event.getId());
+            return;
+        }
+        // egress events xử lý theo egressId, không cần meeting lookup
+        // (có thể đến sau khi room đã đóng)
+        if (event.getEvent().startsWith("egress_")) {
+            handleEgress(event);
             return;
         }
         String roomName = event.getRoom().getName();
@@ -59,5 +66,32 @@ public class WebhookHandler {
             default -> log.debug("Unhandled webhook event {}", event.getEvent());
         }
         meeting.setUpdatedAt(Instant.now());
+    }
+
+    private void handleEgress(LivekitWebhook.WebhookEvent event) {
+        switch (event.getEvent()) {
+            case "egress_started", "egress_updated" -> recordings
+                    .findByEgressId(event.getEgressInfo().getEgressId())
+                    .ifPresent(r -> {
+                        if (r.getStatus() == com.meetly.recording.RecordingStatus.STARTING) {
+                            r.setStatus(com.meetly.recording.RecordingStatus.ACTIVE);
+                        }
+                    });
+            case "egress_ended" -> recordings
+                    .findByEgressId(event.getEgressInfo().getEgressId())
+                    .ifPresent(r -> {
+                        boolean ok = event.getEgressInfo().getStatus()
+                                == livekit.LivekitEgress.EgressStatus.EGRESS_COMPLETE;
+                        r.setStatus(ok ? com.meetly.recording.RecordingStatus.COMPLETED
+                                : com.meetly.recording.RecordingStatus.FAILED);
+                        r.setEndedAt(Instant.now());
+                        if (event.getEgressInfo().getFileResultsCount() > 0) {
+                            var file = event.getEgressInfo().getFileResults(0);
+                            r.setDurationSeconds(file.getDuration() / 1_000_000_000L); // ns → s
+                            r.setSizeBytes(file.getSize());
+                        }
+                    });
+            default -> log.debug("Unhandled egress event {}", event.getEvent());
+        }
     }
 }

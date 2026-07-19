@@ -31,6 +31,7 @@ class WebhookHandlerIT {
     @Autowired ParticipantSessionRepository sessions;
     @Autowired UserRepository users;
     @Autowired MockMvc mvc;
+    @Autowired com.meetly.recording.RecordingRepository recordings;
 
     private Meeting meeting;
 
@@ -79,6 +80,29 @@ class WebhookHandlerIT {
         handler.handle(event("participant_joined", id));
         handler.handle(event("participant_joined", id));
         assertThat(sessions.findByMeetingIdAndLeftAtIsNull(meeting.getId())).hasSize(1);
+    }
+
+    @Test
+    void egressEndedCompletesRecording() {
+        com.meetly.recording.Recording rec = new com.meetly.recording.Recording();
+        rec.setMeetingId(meeting.getId());
+        rec.setEgressId("EG_TEST_" + System.nanoTime());
+        rec.setS3Key("recordings/x/y.mp4");
+        recordings.save(rec);
+
+        livekit.LivekitEgress.EgressInfo info = livekit.LivekitEgress.EgressInfo.newBuilder()
+                .setEgressId(rec.getEgressId())
+                .setStatus(livekit.LivekitEgress.EgressStatus.EGRESS_COMPLETE)
+                .build();
+        LivekitWebhook.WebhookEvent ev = LivekitWebhook.WebhookEvent.newBuilder()
+                .setEvent("egress_ended").setId("eg-e1-" + System.nanoTime())
+                .setEgressInfo(info)
+                .setRoom(LivekitModels.Room.newBuilder().setName(meeting.getCode()))
+                .build();
+        handler.handle(ev);
+
+        assertThat(recordings.findByEgressId(rec.getEgressId()).orElseThrow().getStatus())
+                .isEqualTo(com.meetly.recording.RecordingStatus.COMPLETED);
     }
 
     @Test
