@@ -32,6 +32,7 @@ public class MeetingService {
         m.setHostId(hostId);
         m.setScheduledStartAt(req.scheduledStartAt() != null ? req.scheduledStartAt() : Instant.now());
         m.setScheduledEndAt(req.scheduledEndAt());
+        m.setRoomType(req.roomType() != null ? req.roomType() : RoomType.MEETING);
         m.setCode(uniqueCode());
         return meetings.save(m);
     }

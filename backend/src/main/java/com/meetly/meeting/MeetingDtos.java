@@ -1,5 +1,6 @@
 package com.meetly.meeting;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -10,7 +11,11 @@ public class MeetingDtos {
     public record CreateMeetingRequest(@NotBlank @Size(max = 255) String title,
                                        String description,
                                        Instant scheduledStartAt,
-                                       Instant scheduledEndAt) {}
+                                       Instant scheduledEndAt,
+                                       RoomType roomType) {}
+
+    public record AddMemberRequest(@NotBlank @Email String email, MeetingRole role) {}
+    public record MemberResponse(UUID id, String email, MeetingRole role) {}
 
     public record UpdateMeetingRequest(@Size(max = 255) String title,
                                        String description,
