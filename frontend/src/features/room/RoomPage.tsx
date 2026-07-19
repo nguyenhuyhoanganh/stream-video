@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { LiveKitRoom, VideoConference } from '@livekit/components-react';
+import { LiveKitRoom } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { useJoinMeeting } from './roomApi';
+import { RoomLayout } from './RoomLayout';
 import { useAuthStore } from '../../stores/authStore';
 import { useRoomStore } from '../../stores/roomStore';
 
@@ -65,7 +66,7 @@ export function RoomPage() {
         audio={join.data.role !== 'ATTENDEE' && (choices.audioEnabled ?? true)}
         onDisconnected={() => navigate(user ? '/' : `/m/${code}`)}
       >
-        <VideoConference />
+        <RoomLayout meetingId={join.data.meetingId} role={join.data.role} />
       </LiveKitRoom>
     </div>
   );
