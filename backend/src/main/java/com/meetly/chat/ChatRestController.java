@@ -54,7 +54,7 @@ public class ChatRestController {
                                        @PathVariable UUID meetingId, @PathVariable UUID msgId) {
         if (!(principal instanceof AuthenticatedUser user)) {
             throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_MEETING_HOST,
-                    "Chỉ host mới được xóa tin nhắn");
+                    "Only the host can delete messages");
         }
         chatService.deleteMessage(meetingId, msgId, user.id());
         return ResponseEntity.noContent().build();

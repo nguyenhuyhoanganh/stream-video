@@ -35,7 +35,7 @@ public class MemberService {
         Meeting m = requireHost(meetingId, actorId);
         if (role == MeetingRole.HOST) {
             throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED,
-                    "Không thể gán role HOST cho member");
+                    "Cannot assign the HOST role to a member");
         }
         MeetingMember mm = new MeetingMember();
         mm.setMeetingId(m.getId());
@@ -61,17 +61,17 @@ public class MemberService {
                 .filter(m -> m.getMeetingId().equals(meetingId))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
                         ErrorCode.PARTICIPANT_NOT_FOUND,
-                        "Không tìm thấy thành viên trong phòng họp này"));
+                        "Member not found in this meeting"));
         members.delete(mm);
     }
 
     private Meeting requireHost(UUID meetingId, UUID actorId) {
         Meeting m = meetings.findById(meetingId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+                        ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
         if (!m.getHostId().equals(actorId)) {
             throw new ApiException(HttpStatus.FORBIDDEN,
-                    ErrorCode.NOT_MEETING_HOST, "Chỉ host mới được thao tác");
+                    ErrorCode.NOT_MEETING_HOST, "Only the host can perform this action");
         }
         return m;
     }

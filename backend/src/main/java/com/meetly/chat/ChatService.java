@@ -60,15 +60,15 @@ public class ChatService {
     public void deleteMessage(UUID meetingId, UUID messageId, UUID actorId) {
         Meeting meeting = meetings.findById(meetingId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+                        ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
         if (!meeting.getHostId().equals(actorId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_MEETING_HOST,
-                    "Chỉ host mới được xóa tin nhắn");
+                    "Only the host can delete messages");
         }
         ChatMessage msg = chatMessages.findById(messageId)
                 .filter(m -> m.getMeetingId().equals(meetingId))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MESSAGE_NOT_FOUND, "Không tìm thấy tin nhắn"));
+                        ErrorCode.MESSAGE_NOT_FOUND, "Message not found"));
         msg.setDeletedAt(Instant.now());
         msg.setDeletedBy(actorId.toString());
         publish(meetingId, ChatEvent.deleted(messageId));

@@ -91,17 +91,17 @@ public class ControlController {
             return UUID.fromString(identity);
         } catch (IllegalArgumentException e) {
             throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED,
-                    "identity không hợp lệ: phải là userId hoặc guest:<uuid>");
+                    "Invalid identity: expected userId or guest:<uuid>");
         }
     }
 
     private Meeting requireHost(UUID meetingId, UUID actorId) {
         Meeting m = meetings.findById(meetingId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+                        ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
         if (!m.getHostId().equals(actorId)) {
             throw new ApiException(HttpStatus.FORBIDDEN,
-                    ErrorCode.NOT_MEETING_HOST, "Chỉ host mới được thao tác");
+                    ErrorCode.NOT_MEETING_HOST, "Only the host can perform this action");
         }
         return m;
     }

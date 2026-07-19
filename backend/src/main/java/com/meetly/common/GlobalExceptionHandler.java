@@ -49,7 +49,7 @@ public class GlobalExceptionHandler {
     ProblemDetail handleBadRequest(Exception ex) {
         log.debug("Bad request: {}", ex.getMessage());
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ");
+                HttpStatus.BAD_REQUEST, "Invalid request");
         pd.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
         return pd;
     }
@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     ProblemDetail handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-                HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type không được hỗ trợ");
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported Content-Type");
         pd.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
         return pd;
     }

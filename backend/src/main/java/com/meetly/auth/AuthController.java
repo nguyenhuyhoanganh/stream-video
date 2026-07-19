@@ -36,7 +36,7 @@ public class AuthController {
             @CookieValue(name = REFRESH_COOKIE, required = false) String refreshCookie) {
         if (refreshCookie == null) {
             throw new com.meetly.common.ApiException(org.springframework.http.HttpStatus.UNAUTHORIZED,
-                    com.meetly.common.ErrorCode.INVALID_REFRESH_TOKEN, "Thiếu refresh token");
+                    com.meetly.common.ErrorCode.INVALID_REFRESH_TOKEN, "Missing refresh token");
         }
         User user = authService.rotate(refreshCookie);
         return respondWithTokens(user);

@@ -33,12 +33,12 @@ public class RecordingService {
         Meeting m = requireHost(meetingId, actorId);
         if (!m.isAllowRecording()) {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.RECORDING_NOT_ALLOWED,
-                    "Phòng họp này không cho phép ghi hình");
+                    "Recording is not allowed for this meeting");
         }
         if (recordings.existsByMeetingIdAndStatusIn(meetingId,
                 List.of(RecordingStatus.STARTING, RecordingStatus.ACTIVE))) {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.RECORDING_ALREADY_ACTIVE,
-                    "Đang có bản ghi chạy");
+                    "A recording is already in progress");
         }
         String s3Key = "recordings/%s/%s.mp4".formatted(m.getCode(), TS.format(Instant.now()));
         String egressId = egressClient.startRoomComposite(m.getCode(), s3Key);
@@ -64,7 +64,7 @@ public class RecordingService {
     @Transactional(readOnly = true)
     public List<Recording> list(UUID meetingId, UUID actorId) {
         Meeting m = meetings.findById(meetingId).orElseThrow(() -> new ApiException(
-                HttpStatus.NOT_FOUND, ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+                HttpStatus.NOT_FOUND, ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
         requireHostOrMember(m, actorId);   // spec 4.6: chỉ host/member của meeting
         return recordings.findByMeetingIdOrderByStartedAtDesc(meetingId);
     }
@@ -73,12 +73,12 @@ public class RecordingService {
     public String playbackUrl(UUID recordingId, UUID actorId) {
         Recording rec = recordings.findById(recordingId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.RECORDING_NOT_FOUND, "Không tìm thấy bản ghi"));
+                        ErrorCode.RECORDING_NOT_FOUND, "Recording not found"));
         Meeting m = meetings.findById(rec.getMeetingId()).orElseThrow();
         requireHostOrMember(m, actorId);   // spec 4.6: chỉ host/member của meeting
         if (rec.getStatus() != RecordingStatus.COMPLETED || rec.getS3Key() == null) {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.RECORDING_NOT_READY,
-                    "Bản ghi chưa sẵn sàng");
+                    "Recording is not ready yet");
         }
         return storageService.presignGetUrl(rec.getS3Key(), Duration.ofHours(1));
     }
@@ -88,17 +88,17 @@ public class RecordingService {
                 || members.findByMeetingIdAndUserId(m.getId(), actorId).isPresent();
         if (!allowed) {
             throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
-                    "Bạn không thuộc phòng họp này");
+                    "You are not part of this meeting");
         }
     }
 
     private Meeting requireHost(UUID meetingId, UUID actorId) {
         Meeting m = meetings.findById(meetingId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+                        ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
         if (!m.getHostId().equals(actorId)) {
             throw new ApiException(HttpStatus.FORBIDDEN,
-                    ErrorCode.NOT_MEETING_HOST, "Chỉ host mới được thao tác");
+                    ErrorCode.NOT_MEETING_HOST, "Only the host can perform this action");
         }
         return m;
     }

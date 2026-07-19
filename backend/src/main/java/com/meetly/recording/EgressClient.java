@@ -37,10 +37,10 @@ public class EgressClient {
             LivekitEgress.EgressInfo info = client
                     .startRoomCompositeEgress(roomCode, output, "grid")
                     .execute().body();
-            if (info == null) throw new IllegalStateException("Egress trả về rỗng");
+            if (info == null) throw new IllegalStateException("Egress returned an empty response");
             return info.getEgressId();
         } catch (IOException e) {
-            throw new IllegalStateException("Không start được egress", e);
+            throw new IllegalStateException("Failed to start egress", e);
         }
     }
 
@@ -48,7 +48,7 @@ public class EgressClient {
         try {
             client.stopEgress(egressId).execute();
         } catch (IOException e) {
-            throw new IllegalStateException("Không stop được egress", e);
+            throw new IllegalStateException("Failed to stop egress", e);
         }
     }
 }

@@ -34,7 +34,7 @@ public class AuthService {
     @Transactional
     public User register(String email, String password, String fullName) {
         if (users.existsByEmail(email)) {
-            throw new ApiException(HttpStatus.CONFLICT, ErrorCode.EMAIL_TAKEN, "Email đã được đăng ký");
+            throw new ApiException(HttpStatus.CONFLICT, ErrorCode.EMAIL_TAKEN, "Email is already registered");
         }
         User u = new User();
         u.setEmail(email);
@@ -48,7 +48,7 @@ public class AuthService {
         return users.findByEmail(email)
                 .filter(u -> passwordEncoder.matches(password, u.getPasswordHash()))
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
-                        ErrorCode.INVALID_CREDENTIALS, "Email hoặc mật khẩu không đúng"));
+                        ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password"));
     }
 
     @Transactional
@@ -80,7 +80,7 @@ public class AuthService {
         RefreshToken current = refreshTokens.findByTokenHash(sha256(rawRefreshToken))
                 .filter(RefreshToken::isActive)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
-                        ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token không hợp lệ"));
+                        ErrorCode.INVALID_REFRESH_TOKEN, "Invalid refresh token"));
         current.setRevokedAt(Instant.now());
         return users.findById(current.getUserId()).orElseThrow();
     }

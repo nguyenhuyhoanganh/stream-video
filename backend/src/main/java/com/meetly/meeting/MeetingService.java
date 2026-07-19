@@ -44,14 +44,14 @@ public class MeetingService {
             String code = codeGenerator.newCode();
             if (!meetings.existsByCode(code)) return code;
         }
-        throw new IllegalStateException("Không sinh được mã phòng duy nhất sau 5 lần");
+        throw new IllegalStateException("Could not generate a unique room code after 5 attempts");
     }
 
     @Transactional(readOnly = true)
     public Meeting getByCode(String code) {
         return meetings.findByCode(code)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+                        ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
     }
 
     @Transactional(readOnly = true)
@@ -85,7 +85,7 @@ public class MeetingService {
                 .orElseGet(() -> {
                     if (m.getRoomType() == RoomType.WEBINAR) return MeetingRole.ATTENDEE;
                     throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
-                            "Bạn không được mời vào phòng họp này");
+                            "You have not been invited to this meeting");
                 });
         validateJoinable(m, role == MeetingRole.HOST);
         String token = liveKitTokenService.createToken(
@@ -99,11 +99,11 @@ public class MeetingService {
         Meeting m = getByCode(code);
         if (displayName == null || displayName.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.DISPLAY_NAME_REQUIRED,
-                    "Vui lòng nhập tên hiển thị");
+                    "Please enter a display name");
         }
         if (m.getRoomType() != RoomType.WEBINAR) {
             throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.GUEST_MEETING_FORBIDDEN,
-                    "Phòng họp này yêu cầu đăng nhập");
+                    "This meeting requires you to sign in");
         }
         validateJoinable(m, false);
         String identity = "guest:" + UUID.randomUUID();
@@ -118,12 +118,12 @@ public class MeetingService {
     void validateJoinable(Meeting m, boolean isHost) {
         if (m.getStatus() == MeetingStatus.ENDED || m.getStatus() == MeetingStatus.CANCELLED) {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.MEETING_ENDED,
-                    "Phòng họp đã kết thúc hoặc bị hủy");
+                    "This meeting has ended or was cancelled");
         }
         Instant earliestJoin = m.getScheduledStartAt().minus(15, ChronoUnit.MINUTES);
         if (!isHost && Instant.now().isBefore(earliestJoin)) {
             throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.MEETING_NOT_STARTED,
-                    "Phòng họp chưa bắt đầu (được vào sớm tối đa 15 phút)");
+                    "This meeting has not started yet (you may join up to 15 minutes early)");
         }
     }
 
@@ -136,10 +136,10 @@ public class MeetingService {
     private Meeting requireHost(UUID meetingId, UUID actorId) {
         Meeting m = meetings.findById(meetingId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+                        ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
         if (!m.getHostId().equals(actorId)) {
             throw new ApiException(HttpStatus.FORBIDDEN,
-                    ErrorCode.NOT_MEETING_HOST, "Chỉ host mới được thao tác");
+                    ErrorCode.NOT_MEETING_HOST, "Only the host can perform this action");
         }
         return m;
     }

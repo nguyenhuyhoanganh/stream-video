@@ -36,7 +36,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String header = accessor.getFirstNativeHeader("Authorization");
             if (header == null || !header.startsWith("Bearer ")) {
-                throw new IllegalArgumentException("Thiếu Authorization header khi CONNECT");
+                throw new IllegalArgumentException("Missing Authorization header on CONNECT");
             }
             Object principal = jwtService.parsePrincipal(header.substring(7));
             String role = principal instanceof GuestUser ? "ROLE_GUEST" : "ROLE_USER";
@@ -48,10 +48,10 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             String destination = accessor.getDestination();
             Matcher m = destination != null ? CHAT_TOPIC.matcher(destination) : null;
             if (m == null || !m.matches()) {
-                throw new IllegalArgumentException("Destination không hợp lệ: " + destination);
+                throw new IllegalArgumentException("Invalid destination: " + destination);
             }
             var auth = (UsernamePasswordAuthenticationToken) accessor.getUser();
-            if (auth == null) throw new IllegalArgumentException("Chưa xác thực khi SUBSCRIBE");
+            if (auth == null) throw new IllegalArgumentException("Not authenticated on SUBSCRIBE");
             accessGuard.check(auth.getPrincipal(), UUID.fromString(m.group(1)));
         }
         return message;

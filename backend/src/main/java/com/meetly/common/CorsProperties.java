@@ -14,7 +14,7 @@ public record CorsProperties(List<String> allowedOrigins) {
     public CorsProperties {
         if (allowedOrigins == null || allowedOrigins.isEmpty()) {
             throw new IllegalStateException(
-                    "Thiếu cấu hình meetly.cors.allowed-origins (env MEETLY_CORS_ALLOWED_ORIGINS)");
+                    "Missing configuration meetly.cors.allowed-origins (env MEETLY_CORS_ALLOWED_ORIGINS)");
         }
     }
 }

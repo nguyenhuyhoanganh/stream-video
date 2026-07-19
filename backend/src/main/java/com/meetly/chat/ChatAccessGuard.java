@@ -30,11 +30,11 @@ public class ChatAccessGuard {
     public Meeting check(Object principal, UUID meetingId) {
         Meeting meeting = meetings.findById(meetingId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                        ErrorCode.MEETING_NOT_FOUND, "Không tìm thấy phòng họp"));
+                        ErrorCode.MEETING_NOT_FOUND, "Meeting not found"));
         if (principal instanceof GuestUser g) {
             if (!g.meetingId().equals(meetingId)) {
                 throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
-                        "Guest token không thuộc phòng này");
+                        "Guest token does not belong to this meeting");
             }
             return meeting;
         }
@@ -43,11 +43,11 @@ public class ChatAccessGuard {
                     || memberService.resolveRole(meeting, u.id(), u.email()).isPresent();
             if (!allowed) {
                 throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_A_MEMBER,
-                        "Bạn không thuộc phòng họp này");
+                        "You are not part of this meeting");
             }
             return meeting;
         }
         throw new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS,
-                "Không xác thực được");
+                "Could not authenticate");
     }
 }
