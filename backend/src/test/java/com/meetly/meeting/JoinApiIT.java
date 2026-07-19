@@ -60,7 +60,7 @@ class JoinApiIT {
     @SuppressWarnings("unchecked")
     void hostAndParticipantJoin() throws Exception {
         String code = createMeeting(hostToken, """
-                {"title":"Now meeting"}""");
+                {"title":"Now meeting","roomType":"WEBINAR"}""");
 
         // host join → HOST, token có roomAdmin
         String hostJoin = mvc.perform(post("/api/v1/meetings/" + code + "/join")
@@ -75,22 +75,33 @@ class JoinApiIT {
         assertThat(hostVideo.get("roomAdmin")).isEqualTo(true);
         assertThat(hostVideo.get("canPublish")).isEqualTo(true);
 
-        // người khác join → SPEAKER, không roomAdmin
+        // người lạ join WEBINAR → ATTENDEE, không publish được
         String guestJoin = mvc.perform(post("/api/v1/meetings/" + code + "/join")
                         .header("Authorization", "Bearer " + guestToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.role").value("SPEAKER"))
+                .andExpect(jsonPath("$.role").value("ATTENDEE"))
                 .andReturn().getResponse().getContentAsString();
         Map<String, Object> guestVideo = parseLivekit(read(guestJoin, "$.livekitToken"))
                 .get("video", Map.class);
         assertThat(guestVideo.get("roomAdmin")).isNull();
+        assertThat(guestVideo.get("canPublish")).isEqualTo(false);
         assertThat(guestVideo.get("canPublishData")).isEqualTo(false);
+    }
+
+    @Test
+    void strangerCannotJoinPrivateMeeting() throws Exception {
+        String code = createMeeting(hostToken, """
+                {"title":"Private","roomType":"MEETING"}""");
+        mvc.perform(post("/api/v1/meetings/" + code + "/join")
+                        .header("Authorization", "Bearer " + guestToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("NOT_A_MEMBER"));
     }
 
     @Test
     void joinTooEarlyForbiddenExceptHost() throws Exception {
         String code = createMeeting(hostToken, """
-                {"title":"Future","scheduledStartAt":"2030-01-01T00:00:00Z"}""");
+                {"title":"Future","scheduledStartAt":"2030-01-01T00:00:00Z","roomType":"WEBINAR"}""");
 
         mvc.perform(post("/api/v1/meetings/" + code + "/join")
                         .header("Authorization", "Bearer " + guestToken))
