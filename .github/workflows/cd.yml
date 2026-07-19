@@ -1,0 +1,114 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & push api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ops/docker/Dockerfile.api
+          push: true
+          tags: ${{ env.REGISTRY }}/meetly-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build & push web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ops/docker/Dockerfile.web
+          push: true
+          tags: ${{ env.REGISTRY }}/meetly-web:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Trivy scan api image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/meetly-api:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+      - name: Trivy scan web image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/meetly-web:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+  deploy-staging:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_STAGING }}" | base64 -d > ~/.kube/config
+      - name: Helm upgrade staging
+        run: |
+          helm upgrade --install meetly ops/helm/meetly \
+            -n meetly-staging --create-namespace \
+            -f ops/helm/meetly/values-staging.yaml \
+            --set image.registry=${{ env.REGISTRY }} \
+            --set image.tag=${{ github.sha }} \
+            --wait --timeout 5m
+      - name: Smoke check
+        run: |
+          kubectl -n meetly-staging rollout status deploy/meetly-api --timeout=120s
+          READY=$(kubectl -n meetly-staging get deploy meetly-api -o jsonpath='{.status.readyReplicas}')
+          test "$READY" -ge 1
+
+  smoke-e2e:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Playwright smoke trên staging
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: https://meet-staging.meetly.example.com
+        run: |
+          npm ci
+          npx playwright install chromium
+          npx playwright test e2e/two-users-meet.spec.ts
+
+  deploy-prod:
+    needs: smoke-e2e
+    runs-on: ubuntu-latest
+    environment: production   # đặt required reviewers trong GitHub Settings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_PROD }}" | base64 -d > ~/.kube/config
+      - name: Helm upgrade prod
+        run: |
+          helm upgrade --install meetly ops/helm/meetly \
+            -n meetly-prod --create-namespace \
+            -f ops/helm/meetly/values-prod.yaml \
+            --set image.registry=${{ env.REGISTRY }} \
+            --set image.tag=${{ github.sha }} \
+            --wait --timeout 5m
