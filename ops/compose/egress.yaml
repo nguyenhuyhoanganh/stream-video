@@ -1,0 +1,8 @@
+api_key: devkey
+api_secret: meetly_dev_secret_0123456789abcdef
+ws_url: ws://livekit:7880
+redis:
+  address: redis:6379
+insecure: true
+logging:
+  level: info

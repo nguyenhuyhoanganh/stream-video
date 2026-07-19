@@ -26,6 +26,7 @@ services:
   livekit:
     image: livekit/livekit-server:v1.9.1
     command: --config /etc/livekit.yaml --node-ip 127.0.0.1
+    depends_on: [redis]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -35,5 +36,41 @@ services:
       - "7881:7881"
       - "50000-50060:50000-50060/udp"
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  createbucket:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minio minio12345 &&
+      mc mb -p local/meetly-recordings || true
+      "
+
+  egress:
+    image: livekit/egress:v1.9
+    depends_on: [redis, livekit]
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./egress.yaml:/etc/egress.yaml:ro
+    # egress cần shm lớn để chạy chromium composite
+    shm_size: 2gb
+
 volumes:
   pgdata:
+  miniodata:
