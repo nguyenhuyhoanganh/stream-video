@@ -2,14 +2,17 @@ package com.meetly.meeting;
 
 import com.meetly.common.ApiException;
 import com.meetly.common.ErrorCode;
+import com.meetly.livekit.LiveKitTokenService;
 import com.meetly.meeting.MeetingDtos.CreateMeetingRequest;
 import com.meetly.meeting.MeetingDtos.UpdateMeetingRequest;
+import com.meetly.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +21,8 @@ import java.util.UUID;
 public class MeetingService {
     private final MeetingRepository meetings;
     private final MeetingCodeGenerator codeGenerator;
+    private final LiveKitTokenService liveKitTokenService;
+    private final UserRepository users;
 
     @Transactional
     public Meeting create(UUID hostId, CreateMeetingRequest req) {
@@ -67,6 +72,32 @@ public class MeetingService {
         Meeting m = requireHost(meetingId, actorId);
         m.setStatus(MeetingStatus.CANCELLED);
         m.setUpdatedAt(Instant.now());
+    }
+
+    @Transactional(readOnly = true)
+    public MeetingDtos.JoinResponse join(String code, UUID userId) {
+        Meeting m = getByCode(code);
+        boolean isHost = m.getHostId().equals(userId);
+
+        if (m.getStatus() == MeetingStatus.ENDED || m.getStatus() == MeetingStatus.CANCELLED) {
+            throw new ApiException(HttpStatus.CONFLICT, ErrorCode.MEETING_ENDED,
+                    "Phòng họp đã kết thúc hoặc bị hủy");
+        }
+        Instant earliestJoin = m.getScheduledStartAt().minus(15, ChronoUnit.MINUTES);
+        if (!isHost && Instant.now().isBefore(earliestJoin)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.MEETING_NOT_STARTED,
+                    "Phòng họp chưa bắt đầu (được vào sớm tối đa 15 phút)");
+        }
+
+        var user = users.findById(userId).orElseThrow();
+        Instant expiresAt = (m.getScheduledEndAt() != null
+                ? m.getScheduledEndAt() : Instant.now().plus(4, ChronoUnit.HOURS))
+                .plus(2, ChronoUnit.HOURS);
+        String token = liveKitTokenService.createToken(
+                m.getCode(), userId, user.getFullName(),
+                true /* Phase 1: ai cũng publish */, isHost, expiresAt);
+        return new MeetingDtos.JoinResponse(liveKitTokenService.wsUrl(), token,
+                isHost ? "HOST" : "SPEAKER");
     }
 
     private Meeting requireHost(UUID meetingId, UUID actorId) {
