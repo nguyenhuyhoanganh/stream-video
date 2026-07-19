@@ -1,0 +1,39 @@
+replicaCount: 2
+
+livekit:
+  port: 7880
+  rtc:
+    tcp_port: 7881
+    port_range_start: 50000
+    port_range_end: 60000
+    use_external_ip: true
+  redis:
+    address: "CHANGEME-redis-host:6379"   # managed redis, cùng redis với egress
+  # keys: inject khi install:
+  #   --set livekit.keys.<API_KEY>=<API_SECRET>
+  turn:
+    enabled: false   # dùng coturn riêng (Task 9)
+  prometheus:
+    port: 6789
+
+nodeSelector:
+  role: livekit
+tolerations:
+  - key: dedicated
+    value: livekit
+    effect: NoSchedule
+
+# hostNetwork để UDP đi thẳng vào node public IP
+hostNetwork: true
+
+loadBalancer:
+  type: disable   # media không đi qua LB; chỉ signalling ws đi qua ingress riêng
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: livekit.meetly.example.com
+      paths: ["/"]
+  tls:
+    - secretName: livekit-tls
+      hosts: [livekit.meetly.example.com]

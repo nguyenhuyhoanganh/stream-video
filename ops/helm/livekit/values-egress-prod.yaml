@@ -1,0 +1,18 @@
+replicaCount: 2
+
+egress:
+  redis:
+    address: "CHANGEME-redis-host:6379"
+  # api_key/api_secret inject khi install (trùng key của livekit server)
+  prometheus_port: 6790
+
+nodeSelector:
+  role: egress
+tolerations:
+  - key: dedicated
+    value: egress
+    effect: NoSchedule
+
+resources:
+  requests: { cpu: "2", memory: 4Gi }
+  limits: { cpu: "4", memory: 8Gi }
