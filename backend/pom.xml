@@ -48,11 +48,11 @@
       <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId>
         <configuration><excludes><exclude><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId></exclude></excludes></configuration>
       </plugin>
-      <!-- Docker >= 29 từ chối API < 1.44; docker-java trong Testcontainers 1.21.3 mặc định gửi 1.32 -->
+      <!-- Docker >= 29 rejects API < 1.44; docker-java in Testcontainers 1.21.3 sends 1.32 by default -->
       <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <systemPropertyVariables><api.version>1.44</api.version></systemPropertyVariables>
-          <!-- chạy cả *IT (Testcontainers) trong mvn test — plan dùng 1 lệnh duy nhất -->
+          <!-- run *IT (Testcontainers) as part of mvn test so one command covers everything -->
           <includes>
             <include>**/*Test.java</include>
             <include>**/*Tests.java</include>

@@ -7,7 +7,7 @@
     <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
       <encoder class="net.logstash.logback.encoder.LogstashEncoder">
         <customFields>{"app":"meetly-api"}</customFields>
-        <!-- correlationId nằm trong MDC (CorrelationIdFilter) → tự vào JSON -->
+        <!-- correlationId sits in the MDC (CorrelationIdFilter) and lands in the JSON automatically -->
       </encoder>
     </appender>
     <root level="INFO">
