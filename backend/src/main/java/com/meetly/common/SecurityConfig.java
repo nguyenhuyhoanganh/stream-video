@@ -29,7 +29,10 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**", "/actuator/health",
+                // /actuator không expose qua ingress — probes gọi thẳng pod,
+                // Prometheus scrape nội bộ qua ServiceMonitor
+                .requestMatchers("/api/v1/auth/**", "/actuator/health", "/actuator/health/**",
+                        "/actuator/prometheus",
                         "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST,
                         "/api/v1/meetings/*/join").permitAll()
