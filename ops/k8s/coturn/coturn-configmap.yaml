@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coturn-config
+  namespace: livekit
+data:
+  turnserver.conf: |
+    listening-port=3478
+    tls-listening-port=443
+    realm=turn.meetly.example.com
+    use-auth-secret
+    # static-auth-secret inject qua env TURN_SECRET (args --static-auth-secret)
+    no-cli
+    no-loopback-peers
+    no-multicast-peers
+    min-port=49152
+    max-port=65535
+    cert=/certs/tls.crt
+    pkey=/certs/tls.key
