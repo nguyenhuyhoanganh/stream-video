@@ -6,6 +6,8 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { RegisterPage } from './features/auth/RegisterPage';
 import { DashboardPage } from './features/meetings/DashboardPage';
+import { PreJoinPage } from './features/room/PreJoinPage';
+import { RoomPage } from './features/room/RoomPage';
 
 const queryClient = new QueryClient();
 
@@ -22,6 +24,8 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/m/:code" element={<PreJoinPage />} />
+            <Route path="/m/:code/room" element={<RoomPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
