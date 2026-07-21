@@ -15,12 +15,14 @@ Nếu anh/chị mới tiếp cận dự án, đọc theo thứ tự này:
 | 2 | [Hướng dẫn chạy và kiểm thử](docs/02-huong-dan-chay-va-test.md) | Cầm tay chỉ việc: cài gì, chạy lệnh nào, thử 8 kịch bản, hỏng thì sửa | Khi muốn tự chạy |
 | 3 | [Đi sâu Backend](docs/03-di-sau-backend.md) | Đọc **code thật** của backend từng dòng: xác thực, phân quyền, sinh vé LiveKit, chat | Người biết Spring Boot |
 | 4 | [Đi sâu Frontend](docs/04-di-sau-frontend.md) | Đọc **code thật** của React từng phần: interceptor, Zustand, TanStack Query, video, chat | Người biết React |
-| 5 | [Thiết kế hệ thống](docs/superpowers/specs/2026-07-18-meetly-video-conferencing-design.md) | Bản thiết kế gốc và các quyết định kiến trúc | Tham khảo |
-| 6 | [Runbook vận hành](docs/runbooks/) | Load test và checklist trước khi lên production | Khi lên cloud |
+| 5 | [Đi sâu Ops](docs/05-di-sau-ops.md) | Đóng gói và triển khai: Docker, Docker Compose, Kubernetes, Helm, CI/CD, giám sát, bí mật | Muốn hiểu vận hành |
+| 6 | [Các dịch vụ ngoài](docs/06-cac-dich-vu-ngoai.md) | Từng dịch vụ bên thứ ba: LiveKit, Egress, Redis, PostgreSQL, MinIO/S3, coturn | Muốn hiểu hạ tầng |
+| 7 | [Thiết kế hệ thống](docs/superpowers/specs/2026-07-18-meetly-video-conferencing-design.md) | Bản thiết kế gốc và các quyết định kiến trúc | Tham khảo |
+| 8 | [Runbook vận hành](docs/runbooks/) | Load test và checklist trước khi lên production | Khi lên cloud |
 
 > **Lộ trình đề xuất:** đọc tài liệu 1 để có bức tranh tổng thể → tài liệu 2 để tự chạy và
-> nghịch thử → tài liệu 3 và 4 để hiểu code bên trong. Tài liệu 3 và 4 đi qua code thật từng
-> dòng, mục tiêu là **đọc xong hiểu ngay, không phải tra thêm ở đâu**.
+> nghịch thử → tài liệu 3–6 để hiểu code và hạ tầng bên trong. Tài liệu 3–6 đi qua **code và
+> file cấu hình thật** từng dòng, mục tiêu là **đọc xong hiểu ngay, không phải tra thêm ở đâu**.
 
 ## Dev quickstart
 
